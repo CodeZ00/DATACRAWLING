@@ -1,7 +1,8 @@
-"""교보문고 IT 베스트셀러 글래스모피즘 웹 대시보드 생성 스크립트.
+"""교보문고 IT 베스트셀러 화이트 톤 글래스모피즘 웹 대시보드 생성 스크립트.
 
 CSV 데이터를 로드하여 컴팩트한 JSON으로 가공한 뒤,
-Chart.js와 Tailwind CSS CDN을 기반으로 한 단일 파일형 글래스모피즘 대시보드(kyobo/src/dashboard.html)를 빌드합니다.
+화사하고 세련된 화이트 톤 글래스모피즘(White Glassmorphism / Frosted Glass) UI와
+Chart.js를 결합한 독립형 대시보드(kyobo/src/dashboard.html)를 빌드합니다.
 """
 
 import json
@@ -162,17 +163,17 @@ def build_dashboard():
     ].to_dict(orient="records")
 
     publishers = sorted(list(df["publisher"].dropna().unique()))
-    pub_options = "".join([f'<option value="{p}" class="bg-slate-900 text-white">{p}</option>' for p in publishers])
+    pub_options = "".join([f'<option value="{p}">{p}</option>' for p in publishers])
 
-    print(f">>> HTML 템플릿 로드 및 컴파일 중 (도서 {len(books_data)}건)...")
+    print(f">>> 화이트 톤 HTML 템플릿 컴파일 중 (도서 {len(books_data)}건)...")
 
-    # 순수 HTML 템플릿에 플레이스홀더를 치환하는 방식 적용
+    # 화이트 톤 글래스모피즘 템플릿
     template = """<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>교보문고 IT 베스트셀러 글래스모피즘 대시보드</title>
+  <title>교보문고 IT 베스트셀러 대시보드 (White Glassmorphism)</title>
   
   <!-- Pretendard 폰트 -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -188,19 +189,18 @@ def build_dashboard():
 
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
             sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
           },
           colors: {
-            glass: {
-              50: 'rgba(255, 255, 255, 0.03)',
-              100: 'rgba(255, 255, 255, 0.06)',
-              200: 'rgba(255, 255, 255, 0.10)',
-              border: 'rgba(255, 255, 255, 0.15)',
-              highlight: 'rgba(255, 255, 255, 0.25)',
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
             }
           }
         }
@@ -210,14 +210,14 @@ def build_dashboard():
 
   <style>
     body {
-      background-color: #070b19;
-      color: #f1f5f9;
+      background-color: #f8fafc;
+      color: #1e293b;
       font-family: 'Pretendard', sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
     }
 
-    /* 앰비언트 글로우 오로라 배경 */
+    /* 소프트 파스텔 앰비언트 글로우 배경 */
     .aurora-bg {
       position: fixed;
       top: 0;
@@ -231,54 +231,54 @@ def build_dashboard():
     .glow-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(120px);
-      opacity: 0.35;
-      animation: float 20s infinite ease-in-out alternate;
+      filter: blur(100px);
+      opacity: 0.55;
+      animation: float 22s infinite ease-in-out alternate;
     }
     .orb-1 {
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, #4facfe, #00f2fe);
-      top: -150px;
+      width: 550px;
+      height: 550px;
+      background: radial-gradient(circle, #bae6fd, #e0f2fe);
+      top: -100px;
       left: -100px;
     }
     .orb-2 {
-      width: 700px;
-      height: 700px;
-      background: radial-gradient(circle, #b721ff, #21d4fd);
-      bottom: -200px;
-      right: -150px;
-      animation-delay: -7s;
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, #e9d5ff, #f3e8ff);
+      bottom: -150px;
+      right: -100px;
+      animation-delay: -6s;
     }
     .orb-3 {
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, #ff4b8b, #ff0844);
-      top: 40%;
-      left: 35%;
-      opacity: 0.22;
-      animation-delay: -12s;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, #fbcfe8, #fdf2f8);
+      top: 35%;
+      left: 40%;
+      opacity: 0.45;
+      animation-delay: -11s;
     }
 
     @keyframes float {
       0% { transform: translate(0px, 0px) scale(1); }
-      50% { transform: translate(60px, 40px) scale(1.08); }
-      100% { transform: translate(-40px, 80px) scale(0.95); }
+      50% { transform: translate(50px, 35px) scale(1.06); }
+      100% { transform: translate(-30px, 60px) scale(0.96); }
     }
 
-    /* 글래스모피즘 코어 클래스 */
+    /* 화이트 글래스모피즘 코어 클래스 */
     .glass-panel {
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.45);
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
       border-radius: 1.25rem;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .glass-panel:hover {
-      border-color: rgba(255, 255, 255, 0.22);
-      box-shadow: 0 14px 40px 0 rgba(0, 242, 254, 0.12);
+      border-color: rgba(59, 130, 246, 0.35);
+      box-shadow: 0 20px 30px -10px rgba(59, 130, 246, 0.08), 0 10px 15px -3px rgba(0, 0, 0, 0.04);
     }
 
     .glass-card-interactive {
@@ -288,45 +288,47 @@ def build_dashboard():
       transform: translateY(-4px);
     }
 
+    /* 인풋 및 셀렉트 박스 */
     .glass-input {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
       backdrop-filter: blur(10px);
       transition: all 0.2s ease;
     }
     .glass-input:focus {
       outline: none;
-      border-color: #00f2fe;
-      background: rgba(255, 255, 255, 0.09);
-      box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+      border-color: #3b82f6;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
-    /* 커스텀 스크롤바 */
+    /* 스크롤바 */
     ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
     }
     ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(241, 245, 249, 0.8);
     }
     ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
+      background: #cbd5e1;
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(0, 242, 254, 0.5);
+      background: #94a3b8;
     }
 
-    .badge-gradient {
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(79, 172, 254, 0.2));
-      border: 1px solid rgba(0, 242, 254, 0.4);
-      color: #38bdf8;
+    .badge-soft {
+      background: linear-gradient(135deg, rgba(224, 242, 254, 0.9), rgba(219, 234, 254, 0.9));
+      border: 1px solid rgba(186, 230, 253, 0.8);
+      color: #0284c7;
     }
   </style>
 </head>
 <body class="p-4 md:p-8">
 
+  <!-- 앰비언트 글로우 배경 -->
   <div class="aurora-bg">
     <div class="glow-orb orb-1"></div>
     <div class="glow-orb orb-2"></div>
@@ -335,37 +337,37 @@ def build_dashboard():
 
   <div class="max-w-7xl mx-auto space-y-8">
 
-    <!-- 상단 헤더 -->
+    <!-- 상단 네비게이션 헤더 -->
     <header class="glass-panel p-6 flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-          <i data-lucide="book-open" class="w-8 h-8 text-white"></i>
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
+          <i data-lucide="book-open" class="w-7 h-7"></i>
         </div>
         <div>
           <div class="flex items-center gap-3">
-            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-cyan-300">
-              교보문고 IT 베스트셀러 라이브 대시보드
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-blue-700">
+              교보문고 IT 베스트셀러 대시보드
             </h1>
-            <span class="badge-gradient text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 shadow-sm">
-              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="badge-soft text-xs px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 shadow-sm">
+              <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
               LIVE DATA
             </span>
           </div>
-          <p class="text-sm text-slate-400 mt-1 flex items-center gap-2">
+          <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
             <span>컴퓨터/IT 일간 베스트셀러 658권 전수 분석</span>
             <span>•</span>
-            <span class="text-slate-500">기준일자: 2026-10-20</span>
+            <span class="text-slate-400">기준일자: 2026-10-20</span>
           </p>
         </div>
       </div>
 
       <!-- 우측 컨트롤 버튼들 -->
       <div class="flex items-center gap-3">
-        <button onclick="resetAllFilters()" class="glass-panel px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-white/10 flex items-center gap-2 border border-white/10 transition">
-          <i data-lucide="rotate-ccw" class="w-4 h-4 text-cyan-400"></i>
+        <button onclick="resetAllFilters()" class="glass-panel px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-2 border border-slate-200 transition shadow-sm">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 text-blue-500"></i>
           필터 초기화
         </button>
-        <button onclick="exportCSV()" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-cyan-500/25 hover:opacity-95 flex items-center gap-2 transition">
+        <button onclick="exportCSV()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 transition">
           <i data-lucide="download" class="w-4 h-4"></i>
           CSV 내보내기
         </button>
@@ -375,73 +377,69 @@ def build_dashboard():
     <!-- KPI 메인 카드 4종 -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       <!-- KPI 1 -->
-      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group">
-        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition"></div>
+      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group border border-slate-200/80">
         <div class="flex justify-between items-start">
-          <span class="text-sm font-medium text-slate-400">총 수집 베스트셀러</span>
-          <div class="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+          <span class="text-sm font-semibold text-slate-500">총 수집 베스트셀러</span>
+          <div class="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
             <i data-lucide="layers" class="w-5 h-5"></i>
           </div>
         </div>
         <div class="mt-4">
-          <span class="text-3xl font-extrabold tracking-tight text-white">{{TOTAL_BOOKS}}</span>
-          <span class="text-sm text-slate-400 ml-1">권</span>
+          <span class="text-3xl font-extrabold tracking-tight text-slate-900">{{TOTAL_BOOKS}}</span>
+          <span class="text-sm text-slate-500 ml-1">권</span>
         </div>
-        <p class="text-xs text-emerald-400 mt-2 flex items-center gap-1 font-medium">
+        <p class="text-xs text-emerald-600 mt-2 flex items-center gap-1 font-semibold">
           <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 100% 전수 수집 완료
         </p>
       </div>
 
       <!-- KPI 2 -->
-      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group">
-        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition"></div>
+      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group border border-slate-200/80">
         <div class="flex justify-between items-start">
-          <span class="text-sm font-medium text-slate-400">평균 실구매가 (중앙값)</span>
-          <div class="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          <span class="text-sm font-semibold text-slate-500">평균 실구매가 (중앙값)</span>
+          <div class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
             <i data-lucide="tag" class="w-5 h-5"></i>
           </div>
         </div>
         <div class="mt-4">
-          <span class="text-3xl font-extrabold tracking-tight text-white">{{AVG_PRICE}}</span>
-          <span class="text-sm text-slate-400 ml-1">원</span>
+          <span class="text-3xl font-extrabold tracking-tight text-slate-900">{{AVG_PRICE}}</span>
+          <span class="text-sm text-slate-500 ml-1">원</span>
         </div>
-        <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-          중앙값: <strong class="text-slate-200">{{MEDIAN_PRICE}}원</strong> (정가 10% 일괄 할인)
+        <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+          중앙값: <strong class="text-slate-700 font-semibold">{{MEDIAN_PRICE}}원</strong> (정가 10% 일괄 할인)
         </p>
       </div>
 
       <!-- KPI 3 -->
-      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group">
-        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition"></div>
+      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group border border-slate-200/80">
         <div class="flex justify-between items-start">
-          <span class="text-sm font-medium text-slate-400">평균 도서 평점</span>
-          <div class="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+          <span class="text-sm font-semibold text-slate-500">평균 도서 평점</span>
+          <div class="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 shadow-sm">
             <i data-lucide="star" class="w-5 h-5"></i>
           </div>
         </div>
         <div class="mt-4">
-          <span class="text-3xl font-extrabold tracking-tight text-white">{{AVG_RATING}}</span>
-          <span class="text-sm text-slate-400 ml-1">/ 10.0</span>
+          <span class="text-3xl font-extrabold tracking-tight text-slate-900">{{AVG_RATING}}</span>
+          <span class="text-sm text-slate-500 ml-1">/ 10.0</span>
         </div>
-        <p class="text-xs text-purple-300 mt-2 flex items-center gap-1 font-medium">
+        <p class="text-xs text-purple-700 mt-2 flex items-center gap-1 font-semibold">
           <i data-lucide="award" class="w-3.5 h-3.5"></i> 평점 보유 도서 만점율 47.1%
         </p>
       </div>
 
       <!-- KPI 4 -->
-      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group">
-        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition"></div>
+      <div class="glass-panel glass-card-interactive p-6 relative overflow-hidden group border border-slate-200/80">
         <div class="flex justify-between items-start">
-          <span class="text-sm font-medium text-slate-400">최다 리뷰 도서</span>
-          <div class="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span class="text-sm font-semibold text-slate-500">최다 리뷰 도서</span>
+          <div class="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">
             <i data-lucide="message-square" class="w-5 h-5"></i>
           </div>
         </div>
         <div class="mt-4">
-          <span class="text-3xl font-extrabold tracking-tight text-white">{{MAX_REVIEWS}}</span>
-          <span class="text-sm text-slate-400 ml-1">건</span>
+          <span class="text-3xl font-extrabold tracking-tight text-slate-900">{{MAX_REVIEWS}}</span>
+          <span class="text-sm text-slate-500 ml-1">건</span>
         </div>
-        <p class="text-xs text-amber-300 mt-2 truncate font-medium" title="{{TOP_REVIEW_TITLE}}">
+        <p class="text-xs text-amber-700 mt-2 truncate font-semibold" title="{{TOP_REVIEW_TITLE}}">
           {{TOP_REVIEW_TITLE}}
         </p>
       </div>
@@ -451,16 +449,16 @@ def build_dashboard():
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       <!-- 차트 1: 가격대별 도서 분포 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
               도서 판매가 구간별 분포
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">1.5만~3만원대 가격 밴드에 73% 밀집</p>
+            <p class="text-xs text-slate-500 mt-0.5">1.5만~3만원대 가격 밴드에 73% 밀집</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Bar Chart</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Bar Chart</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart1"></canvas>
@@ -468,16 +466,16 @@ def build_dashboard():
       </div>
 
       <!-- 차트 2: 상위 10대 출판사 점유율 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
               상위 10대 출판사 점유율
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">한빛미디어, 길벗, 영진닷컴 등 상위 3사가 30% 장악</p>
+            <p class="text-xs text-slate-500 mt-0.5">한빛미디어, 길벗, 영진닷컴 등 상위 3사가 30% 장악</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Doughnut</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Doughnut</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart2"></canvas>
@@ -485,16 +483,16 @@ def build_dashboard():
       </div>
 
       <!-- 차트 3: 출간 연도별 신간 추이 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               출간 연도별 신간 진입 추이 (2018~2026)
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">2026년 개정판 및 신간 도서가 48.2% 차지</p>
+            <p class="text-xs text-slate-500 mt-0.5">2026년 개정판 및 신간 도서가 48.2% 차지</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Line & Area</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Line & Area</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart3"></canvas>
@@ -502,16 +500,16 @@ def build_dashboard():
       </div>
 
       <!-- 차트 4: 순위 구간별 평균 리뷰 수 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
               순위 구간별 평균 독자 리뷰 수
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">최상위 1~50위권 도서의 압도적 리뷰 독점(53.3건)</p>
+            <p class="text-xs text-slate-500 mt-0.5">최상위 1~50위권 도서의 압도적 리뷰 독점(53.3건)</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Bar Chart</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Bar Chart</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart4"></canvas>
@@ -519,16 +517,16 @@ def build_dashboard():
       </div>
 
       <!-- 차트 5: 평점 구간별 도서 분포 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
               도서 평점 구간별 분포 현황
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">10점 만점 집중 현상 및 신간 미평점(0점) 분포</p>
+            <p class="text-xs text-slate-500 mt-0.5">10점 만점 집중 현상 및 신간 미평점(0점) 분포</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Polar Area</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Polar Area</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart5"></canvas>
@@ -536,16 +534,16 @@ def build_dashboard():
       </div>
 
       <!-- 차트 6: TF-IDF 핵심 키워드 Top 15 -->
-      <div class="glass-panel p-6 flex flex-col justify-between">
+      <div class="glass-panel p-6 flex flex-col justify-between border border-slate-200/80">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-pink-400"></span>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
               도서 소개 TF-IDF 핵심 키워드 Top 15
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">'AI', '데이터', '실무', '최신' 등 실용 기술서 중심</p>
+            <p class="text-xs text-slate-500 mt-0.5">'AI', '데이터', '실무', '최신' 등 실용 기술서 중심</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300">Horizontal Bar</span>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Horizontal Bar</span>
         </div>
         <div class="h-64 relative">
           <canvas id="chart6"></canvas>
@@ -555,19 +553,19 @@ def build_dashboard():
     </section>
 
     <!-- 인터랙티브 데이터 탐색 그리드 (테이블) -->
-    <section class="glass-panel p-6 space-y-6">
-      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+    <section class="glass-panel p-6 space-y-6 border border-slate-200/80">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <i data-lucide="database" class="w-5 h-5 text-cyan-400"></i>
+          <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="database" class="w-5 h-5 text-blue-600"></i>
             베스트셀러 실시간 데이터 탐색기
           </h2>
-          <p class="text-xs text-slate-400 mt-1">
+          <p class="text-xs text-slate-500 mt-1">
             필터 조건에 따라 실시간 반응하며, 행을 클릭하면 상세 소개글 모달이 열립니다.
           </p>
         </div>
-        <div class="text-xs text-slate-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-          표시 도서: <strong id="filterCount" class="text-cyan-400 font-bold">{{TOTAL_BOOKS}}</strong> / {{TOTAL_BOOKS}}권
+        <div class="text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
+          표시 도서: <strong id="filterCount" class="text-blue-600 font-bold">{{TOTAL_BOOKS}}</strong> / {{TOTAL_BOOKS}}권
         </div>
       </div>
 
@@ -584,7 +582,7 @@ def build_dashboard():
         <!-- 출판사 필터 -->
         <div>
           <select id="publisherFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
-            <option value="" class="bg-slate-900 text-white">모든 출판사 (전체)</option>
+            <option value="">모든 출판사 (전체)</option>
             {{PUBLISHER_OPTIONS}}
           </select>
         </div>
@@ -592,48 +590,48 @@ def build_dashboard():
         <!-- 가격대 필터 -->
         <div>
           <select id="priceFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
-            <option value="" class="bg-slate-900 text-white">모든 가격대 (전체)</option>
-            <option value="under20" class="bg-slate-900 text-white">2만원 미만</option>
-            <option value="20to30" class="bg-slate-900 text-white">2만 ~ 3만원 (인기 구간)</option>
-            <option value="over30" class="bg-slate-900 text-white">3만원 이상 (전문서)</option>
+            <option value="">모든 가격대 (전체)</option>
+            <option value="under20">2만원 미만</option>
+            <option value="20to30">2만 ~ 3만원 (인기 구간)</option>
+            <option value="over30">3만원 이상 (전문서)</option>
           </select>
         </div>
 
         <!-- 최소 평점 필터 -->
         <div>
           <select id="ratingFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
-            <option value="" class="bg-slate-900 text-white">모든 평점 (전체)</option>
-            <option value="9.5" class="bg-slate-900 text-white">⭐ 9.5점 이상 (초우수)</option>
-            <option value="9.0" class="bg-slate-900 text-white">⭐ 9.0점 이상 (우수)</option>
-            <option value="10.0" class="bg-slate-900 text-white">🏆 10.0점 만점</option>
+            <option value="">모든 평점 (전체)</option>
+            <option value="9.5">⭐ 9.5점 이상 (초우수)</option>
+            <option value="9.0">⭐ 9.0점 이상 (우수)</option>
+            <option value="10.0">🏆 10.0점 만점</option>
           </select>
         </div>
       </div>
 
       <!-- 데이터 테이블 -->
-      <div class="overflow-x-auto rounded-xl border border-white/10 bg-slate-900/30">
-        <table class="w-full text-left text-sm text-slate-300">
-          <thead class="text-xs uppercase bg-white/5 text-slate-400 border-b border-white/10">
+      <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white/70 shadow-sm">
+        <table class="w-full text-left text-sm text-slate-700">
+          <thead class="text-xs uppercase bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
             <tr>
-              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-white" onclick="handleSort('rank')">
-                <div class="flex items-center gap-1">순위 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i></div>
+              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-blue-600" onclick="handleSort('rank')">
+                <div class="flex items-center gap-1">순위 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-400"></i></div>
               </th>
               <th scope="col" class="px-4 py-3.5">도서명</th>
               <th scope="col" class="px-4 py-3.5">저자</th>
               <th scope="col" class="px-4 py-3.5">출판사</th>
-              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-white" onclick="handleSort('sale_price')">
-                <div class="flex items-center gap-1">판매가 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i></div>
+              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-blue-600" onclick="handleSort('sale_price')">
+                <div class="flex items-center gap-1">판매가 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-400"></i></div>
               </th>
-              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-white" onclick="handleSort('review_count')">
-                <div class="flex items-center gap-1">리뷰수 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i></div>
+              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-blue-600" onclick="handleSort('review_count')">
+                <div class="flex items-center gap-1">리뷰수 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-400"></i></div>
               </th>
-              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-white" onclick="handleSort('rating')">
-                <div class="flex items-center gap-1">평점 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i></div>
+              <th scope="col" class="px-4 py-3.5 cursor-pointer hover:text-blue-600" onclick="handleSort('rating')">
+                <div class="flex items-center gap-1">평점 <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-400"></i></div>
               </th>
               <th scope="col" class="px-4 py-3.5">출간일</th>
             </tr>
           </thead>
-          <tbody id="bookTableBody" class="divide-y divide-white/5 font-normal">
+          <tbody id="bookTableBody" class="divide-y divide-slate-100 font-normal">
             <!-- JavaScript 렌더링 영역 -->
           </tbody>
         </table>
@@ -641,22 +639,22 @@ def build_dashboard():
 
       <!-- 페이지네이션 컨트롤 바 -->
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-        <div class="text-xs text-slate-400">
+        <div class="text-xs text-slate-500">
           <span id="pageInfo">1 / 14 페이지</span> (페이지당 
-          <select id="pageSizeSelect" class="bg-transparent border border-white/20 rounded px-1.5 py-0.5 text-xs text-white" onchange="changePageSize()">
-            <option value="15" class="bg-slate-900">15</option>
-            <option value="30" class="bg-slate-900">30</option>
-            <option value="50" class="bg-slate-900">50</option>
+          <select id="pageSizeSelect" class="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs text-slate-700 shadow-sm" onchange="changePageSize()">
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
           </select> 개씩 보기)
         </div>
         <div class="flex items-center gap-2">
-          <button id="prevBtn" onclick="prevPage()" class="glass-panel px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition">
+          <button id="prevBtn" onclick="prevPage()" class="glass-panel px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition border border-slate-200 shadow-sm">
             이전
           </button>
           <div id="pageButtons" class="flex items-center gap-1">
             <!-- 페이지 번호 버튼들 -->
           </div>
-          <button id="nextBtn" onclick="nextPage()" class="glass-panel px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition">
+          <button id="nextBtn" onclick="nextPage()" class="glass-panel px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition border border-slate-200 shadow-sm">
             다음
           </button>
         </div>
@@ -664,72 +662,71 @@ def build_dashboard():
     </section>
 
     <!-- 푸터 -->
-    <footer class="text-center py-6 text-xs text-slate-500 border-t border-white/5">
-      교보문고 IT 베스트셀러 Glassmorphism 대시보드 • Built with Chart.js & Tailwind CSS • Powered by Antigravity Agent
+    <footer class="text-center py-6 text-xs text-slate-500 border-t border-slate-200">
+      교보문고 IT 베스트셀러 White Glassmorphism 대시보드 • Built with Chart.js & Tailwind CSS • Powered by Antigravity Agent
     </footer>
 
   </div>
 
   <!-- 도서 상세 정보 글래스 모달 -->
-  <div id="bookModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
-    <div class="glass-panel max-w-2xl w-full p-6 md:p-8 space-y-6 relative border border-white/20 shadow-2xl">
+  <div id="bookModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
+    <div class="bg-white/95 backdrop-blur-xl max-w-2xl w-full p-6 md:p-8 space-y-6 relative rounded-2xl border border-white shadow-2xl">
       <!-- 닫기 버튼 -->
-      <button onclick="closeModal()" class="absolute right-5 top-5 p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white transition">
+      <button onclick="closeModal()" class="absolute right-5 top-5 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
       <div class="space-y-2">
         <div class="flex items-center gap-2">
-          <span id="modalRank" class="badge-gradient text-xs px-2.5 py-0.5 rounded font-bold">1위</span>
-          <span id="modalPrevRank" class="text-xs text-slate-400">이전 1위</span>
+          <span id="modalRank" class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded font-bold shadow-sm">1위</span>
+          <span id="modalPrevRank" class="text-xs text-slate-500 font-medium">이전 1위</span>
         </div>
-        <h3 id="modalTitle" class="text-xl md:text-2xl font-extrabold text-white leading-snug">도서 제목</h3>
-        <p class="text-sm text-cyan-400 font-medium">
-          <span id="modalAuthor">저자명</span> • <span id="modalPublisher" class="text-slate-300">출판사</span>
+        <h3 id="modalTitle" class="text-xl md:text-2xl font-extrabold text-slate-900 leading-snug">도서 제목</h3>
+        <p class="text-sm text-blue-600 font-semibold">
+          <span id="modalAuthor">저자명</span> • <span id="modalPublisher" class="text-slate-600">출판사</span>
         </p>
       </div>
 
       <!-- 메트릭 그리드 -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
         <div>
-          <span class="text-xs text-slate-400 block">판매가</span>
-          <strong id="modalSalePrice" class="text-base text-white">27,000원</strong>
-          <span id="modalDiscount" class="text-xs text-emerald-400 ml-1"></span>
+          <span class="text-xs text-slate-500 block">판매가</span>
+          <strong id="modalSalePrice" class="text-base text-slate-900">27,000원</strong>
+          <span id="modalDiscount" class="text-xs text-emerald-600 font-semibold ml-1"></span>
         </div>
         <div>
-          <span class="text-xs text-slate-400 block">정가</span>
-          <span id="modalFixedPrice" class="text-sm text-slate-300 line-through">30,000원</span>
+          <span class="text-xs text-slate-500 block">정가</span>
+          <span id="modalFixedPrice" class="text-sm text-slate-400 line-through">30,000원</span>
         </div>
         <div>
-          <span class="text-xs text-slate-400 block">리뷰 및 평점</span>
-          <span id="modalRating" class="text-sm text-amber-400 font-bold">★ 9.86</span>
-          <span id="modalReviewCount" class="text-xs text-slate-400">(398건)</span>
+          <span class="text-xs text-slate-500 block">리뷰 및 평점</span>
+          <span id="modalRating" class="text-sm text-amber-600 font-bold">★ 9.86</span>
+          <span id="modalReviewCount" class="text-xs text-slate-500">(398건)</span>
         </div>
         <div>
-          <span class="text-xs text-slate-400 block">출간일</span>
-          <span id="modalPubDate" class="text-sm text-slate-300">2026-01-02</span>
+          <span class="text-xs text-slate-500 block">출간일</span>
+          <span id="modalPubDate" class="text-sm text-slate-700 font-medium">2026-01-02</span>
         </div>
       </div>
 
       <!-- 도서 소개글 -->
       <div class="space-y-2">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">도서 소개 (Introduction)</span>
-        <div id="modalIntro" class="text-sm text-slate-300 bg-black/40 p-4 rounded-xl max-h-48 overflow-y-auto leading-relaxed border border-white/5">
+        <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">도서 소개 (Introduction)</span>
+        <div id="modalIntro" class="text-sm text-slate-700 bg-white p-4 rounded-xl max-h-48 overflow-y-auto leading-relaxed border border-slate-200 shadow-inner">
           소개글 내용이 들어갑니다.
         </div>
       </div>
 
       <!-- 하단 바코드/ID 정보 -->
-      <div class="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-white/10">
-        <span>ISBN: <strong id="modalIsbn" class="text-slate-400 font-mono">-</strong></span>
-        <span>상품 ID: <strong id="modalBookId" class="text-slate-400 font-mono">-</strong></span>
+      <div class="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+        <span>ISBN: <strong id="modalIsbn" class="text-slate-700 font-mono">-</strong></span>
+        <span>상품 ID: <strong id="modalBookId" class="text-slate-700 font-mono">-</strong></span>
       </div>
     </div>
   </div>
 
   <!-- 임베디드 데이터셋 및 비즈니스 로직 -->
   <script>
-    // 658건 전수 데이터 인라인 임베드
     const ALL_BOOKS = {{BOOKS_DATA_JSON}};
     const CHART_DATA = {
       chart1: {{CHART1_DATA_JSON}},
@@ -740,20 +737,22 @@ def build_dashboard():
       chart6: {{CHART6_DATA_JSON}}
     };
 
-    // 테이블 상태 관리
     let filteredBooks = [...ALL_BOOKS];
     let currentPage = 1;
     let pageSize = 15;
     let currentSort = { column: 'rank', asc: true };
 
-    // Chart.js 글로벌 스타일 설정
-    Chart.defaults.color = '#94a3b8';
+    // 화이트 톤 Chart.js 글로벌 스타일
+    Chart.defaults.color = '#64748b';
     Chart.defaults.font.family = 'Pretendard';
-    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.9)';
-    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.2)';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+    Chart.defaults.plugins.tooltip.titleColor = '#0f172a';
+    Chart.defaults.plugins.tooltip.bodyColor = '#334155';
+    Chart.defaults.plugins.tooltip.borderColor = '#e2e8f0';
     Chart.defaults.plugins.tooltip.borderWidth = 1;
     Chart.defaults.plugins.tooltip.padding = 10;
     Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.boxPadding = 4;
 
     function initCharts() {
       // 차트 1: 가격대별 분포
@@ -764,8 +763,8 @@ def build_dashboard():
           datasets: [{
             label: '도서 수 (권)',
             data: CHART_DATA.chart1.values,
-            backgroundColor: 'rgba(0, 242, 254, 0.65)',
-            borderColor: '#00f2fe',
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: '#2563eb',
             borderWidth: 1.5,
             borderRadius: 6
           }]
@@ -776,7 +775,7 @@ def build_dashboard():
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { display: false } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.06)' } }
+            y: { grid: { color: 'rgba(226, 232, 240, 0.8)' } }
           }
         }
       });
@@ -789,10 +788,10 @@ def build_dashboard():
           datasets: [{
             data: CHART_DATA.chart2.values,
             backgroundColor: [
-              '#00f2fe', '#4facfe', '#7000ff', '#b721ff',
-              '#ff4b8b', '#ff758c', '#ff8b3d', '#10b981', '#3b82f6', '#64748b'
+              '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899',
+              '#f43f5e', '#f97316', '#eab308', '#10b981', '#06b6d4', '#64748b'
             ],
-            borderColor: 'rgba(15, 23, 42, 0.8)',
+            borderColor: '#ffffff',
             borderWidth: 2
           }]
         },
@@ -817,7 +816,7 @@ def build_dashboard():
             label: '등록 권수',
             data: CHART_DATA.chart3.values,
             fill: true,
-            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
             borderColor: '#10b981',
             tension: 0.35,
             pointBackgroundColor: '#10b981',
@@ -831,7 +830,7 @@ def build_dashboard():
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { display: false } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.06)' } }
+            y: { grid: { color: 'rgba(226, 232, 240, 0.8)' } }
           }
         }
       });
@@ -844,8 +843,8 @@ def build_dashboard():
           datasets: [{
             label: '평균 리뷰 수 (건)',
             data: CHART_DATA.chart4.values,
-            backgroundColor: 'rgba(245, 158, 11, 0.65)',
-            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.85)',
+            borderColor: '#d97706',
             borderWidth: 1.5,
             borderRadius: 6
           }]
@@ -856,7 +855,7 @@ def build_dashboard():
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { display: false } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.06)' } }
+            y: { grid: { color: 'rgba(226, 232, 240, 0.8)' } }
           }
         }
       });
@@ -869,14 +868,14 @@ def build_dashboard():
           datasets: [{
             data: CHART_DATA.chart5.values,
             backgroundColor: [
-              'rgba(148, 163, 184, 0.5)',
-              'rgba(239, 68, 68, 0.6)',
-              'rgba(245, 158, 11, 0.6)',
-              'rgba(59, 130, 246, 0.6)',
-              'rgba(168, 85, 247, 0.6)',
-              'rgba(236, 72, 153, 0.7)'
+              'rgba(148, 163, 184, 0.6)',
+              'rgba(239, 68, 68, 0.65)',
+              'rgba(245, 158, 11, 0.65)',
+              'rgba(59, 130, 246, 0.65)',
+              'rgba(168, 85, 247, 0.65)',
+              'rgba(236, 72, 153, 0.75)'
             ],
-            borderColor: 'rgba(15, 23, 42, 0.8)',
+            borderColor: '#ffffff',
             borderWidth: 2
           }]
         },
@@ -887,7 +886,7 @@ def build_dashboard():
             legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } }
           },
           scales: {
-            r: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { display: false } }
+            r: { grid: { color: 'rgba(226, 232, 240, 0.8)' }, ticks: { display: false } }
           }
         }
       });
@@ -900,8 +899,8 @@ def build_dashboard():
           datasets: [{
             label: 'TF-IDF 가중치',
             data: CHART_DATA.chart6.values,
-            backgroundColor: 'rgba(255, 75, 139, 0.65)',
-            borderColor: '#ff4b8b',
+            backgroundColor: 'rgba(244, 63, 94, 0.8)',
+            borderColor: '#e11d48',
             borderWidth: 1.5,
             borderRadius: 4
           }]
@@ -912,7 +911,7 @@ def build_dashboard():
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { color: 'rgba(255, 255, 255, 0.06)' } },
+            x: { grid: { color: 'rgba(226, 232, 240, 0.8)' } },
             y: { grid: { display: false } }
           }
         }
@@ -985,28 +984,28 @@ def build_dashboard():
       document.getElementById('filterCount').innerText = filteredBooks.length.toLocaleString();
 
       if (pageData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-500">조건에 일치하는 도서가 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-400">조건에 일치하는 도서가 없습니다.</td></tr>`;
         renderPagination();
         return;
       }
 
       tbody.innerHTML = pageData.map(b => {
         const rankBadge = b.rank <= 3 
-          ? `<span class="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 text-black font-extrabold text-xs flex items-center justify-center shadow-md">${b.rank}</span>`
-          : `<span class="w-6 h-6 rounded-full bg-white/10 text-slate-300 font-bold text-xs flex items-center justify-center">${b.rank}</span>`;
+          ? `<span class="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white font-extrabold text-xs flex items-center justify-center shadow-sm">${b.rank}</span>`
+          : `<span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center border border-slate-200">${b.rank}</span>`;
         
-        const ratingStr = b.rating > 0 ? `★ ${b.rating.toFixed(2)}` : `<span class="text-slate-500 text-xs">신간/미평가</span>`;
+        const ratingStr = b.rating > 0 ? `★ ${b.rating.toFixed(2)}` : `<span class="text-slate-400 text-xs">신간/미평가</span>`;
 
         return `
-          <tr onclick="openModal('${b.book_id}')" class="hover:bg-white/5 cursor-pointer transition border-b border-white/5">
+          <tr onclick="openModal('${b.book_id}')" class="hover:bg-blue-50/60 cursor-pointer transition border-b border-slate-100">
             <td class="px-4 py-3 font-semibold">${rankBadge}</td>
-            <td class="px-4 py-3 font-medium text-white max-w-xs truncate" title="${b.title}">${b.title}</td>
-            <td class="px-4 py-3 text-slate-400 max-w-[140px] truncate" title="${b.author}">${b.author || '-'}</td>
-            <td class="px-4 py-3 text-cyan-300">${b.publisher}</td>
-            <td class="px-4 py-3 font-bold text-white">${Number(b.sale_price).toLocaleString()}원</td>
-            <td class="px-4 py-3 text-slate-300">${Number(b.review_count).toLocaleString()}</td>
-            <td class="px-4 py-3 text-amber-400 font-semibold">${ratingStr}</td>
-            <td class="px-4 py-3 text-slate-400 font-mono text-xs">${b.pub_date || '-'}</td>
+            <td class="px-4 py-3 font-medium text-slate-900 max-w-xs truncate" title="${b.title}">${b.title}</td>
+            <td class="px-4 py-3 text-slate-600 max-w-[140px] truncate" title="${b.author}">${b.author || '-'}</td>
+            <td class="px-4 py-3 text-blue-600 font-medium">${b.publisher}</td>
+            <td class="px-4 py-3 font-bold text-slate-900">${Number(b.sale_price).toLocaleString()}원</td>
+            <td class="px-4 py-3 text-slate-600 font-medium">${Number(b.review_count).toLocaleString()}</td>
+            <td class="px-4 py-3 text-amber-500 font-semibold">${ratingStr}</td>
+            <td class="px-4 py-3 text-slate-500 font-mono text-xs">${b.pub_date || '-'}</td>
           </tr>
         `;
       }).join('');
@@ -1032,7 +1031,7 @@ def build_dashboard():
       for (let p = startP; p <= endP; p++) {
         const btn = document.createElement('button');
         btn.innerText = p;
-        btn.className = `w-7 h-7 rounded-lg text-xs font-semibold transition ${p === currentPage ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30' : 'glass-panel text-slate-400 hover:text-white'}`;
+        btn.className = `w-7 h-7 rounded-lg text-xs font-semibold transition ${p === currentPage ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`;
         btn.onclick = () => { currentPage = p; renderTable(); };
         btnContainer.appendChild(btn);
       }
@@ -1145,7 +1144,6 @@ def build_dashboard():
 </html>
 """
 
-    # 플레이스홀더 치환
     replacements = {
         "{{TOTAL_BOOKS}}": f"{total_books:,}",
         "{{AVG_PRICE}}": f"{avg_price:,}",
@@ -1168,7 +1166,7 @@ def build_dashboard():
         final_html = final_html.replace(key, val)
 
     output_html_path.write_text(final_html, encoding="utf-8")
-    print(f">>> 대시보드 HTML 파일 생성 완료: {output_html_path} ({output_html_path.stat().st_size:,} bytes)")
+    print(f">>> 화이트 톤 대시보드 HTML 파일 생성 완료: {output_html_path} ({output_html_path.stat().st_size:,} bytes)")
 
 
 if __name__ == "__main__":
