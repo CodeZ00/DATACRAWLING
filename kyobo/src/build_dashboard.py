@@ -1,6 +1,6 @@
 """교보문고 IT 베스트셀러 화이트 톤 글래스모피즘 웹 대시보드 생성 스크립트.
 
-CSV 데이터를 로드하여 컴팩트한 JSON으로 가공한 뒤,
+가장 최신 수집된 CSV 데이터를 자동으로 감지하여 로드하고,
 화사하고 세련된 화이트 톤 글래스모피즘(White Glassmorphism / Frosted Glass) UI와
 Chart.js를 결합한 독립형 대시보드(kyobo/src/dashboard.html)를 빌드합니다.
 """
@@ -10,11 +10,20 @@ from pathlib import Path
 import pandas as pd
 
 
+def get_latest_csv_path() -> Path:
+    """kyobo/data 디렉터리에서 가장 최근에 수집된 CSV 파일 경로를 반환합니다."""
+    data_dir = Path("kyobo/data")
+    csv_files = sorted(list(data_dir.glob("kyobo_daily_it_bestseller_*.csv")))
+    if not csv_files:
+        raise FileNotFoundError("수집된 교보문고 베스트셀러 CSV 파일이 없습니다.")
+    return csv_files[-1]
+
+
 def build_dashboard():
-    csv_path = Path("kyobo/data/kyobo_daily_it_bestseller_20261020.csv")
+    csv_path = get_latest_csv_path()
     output_html_path = Path("kyobo/src/dashboard.html")
 
-    print(f">>> CSV 데이터 로드 중: {csv_path}")
+    print(f">>> 최신 CSV 데이터 감지 및 로드 중: {csv_path}")
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
 
     # 수치형 필드 정제
@@ -49,6 +58,10 @@ def build_dashboard():
         if not df.empty
         else "-"
     )
+
+    # 날짜 추출 (파일명 기반)
+    date_str = csv_path.stem.replace("kyobo_daily_it_bestseller_", "")
+    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else "최신"
 
     # 2. Chart.js 차트 데이터 집계
     price_bins = [0, 15000, 20000, 25000, 30000, 35000, 40000, 1000000]
@@ -165,9 +178,8 @@ def build_dashboard():
     publishers = sorted(list(df["publisher"].dropna().unique()))
     pub_options = "".join([f'<option value="{p}">{p}</option>' for p in publishers])
 
-    print(f">>> 화이트 톤 HTML 템플릿 컴파일 중 (도서 {len(books_data)}건)...")
+    print(f">>> 화이트 톤 HTML 템플릿 컴파일 중 (도서 {len(books_data)}건, 기준일자 {formatted_date})...")
 
-    # 화이트 톤 글래스모피즘 템플릿
     template = """<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -193,15 +205,6 @@ def build_dashboard():
         extend: {
           fontFamily: {
             sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-            }
           }
         }
       }
@@ -217,7 +220,6 @@ def build_dashboard():
       overflow-x: hidden;
     }
 
-    /* 소프트 파스텔 앰비언트 글로우 배경 */
     .aurora-bg {
       position: fixed;
       top: 0;
@@ -266,7 +268,6 @@ def build_dashboard():
       100% { transform: translate(-30px, 60px) scale(0.96); }
     }
 
-    /* 화이트 글래스모피즘 코어 클래스 */
     .glass-panel {
       background: rgba(255, 255, 255, 0.78);
       backdrop-filter: blur(24px);
@@ -288,7 +289,6 @@ def build_dashboard():
       transform: translateY(-4px);
     }
 
-    /* 인풋 및 셀렉트 박스 */
     .glass-input {
       background: rgba(255, 255, 255, 0.92);
       border: 1px solid #e2e8f0;
@@ -303,7 +303,6 @@ def build_dashboard():
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
-    /* 스크롤바 */
     ::-webkit-scrollbar {
       width: 7px;
       height: 7px;
@@ -328,7 +327,6 @@ def build_dashboard():
 </head>
 <body class="p-4 md:p-8">
 
-  <!-- 앰비언트 글로우 배경 -->
   <div class="aurora-bg">
     <div class="glow-orb orb-1"></div>
     <div class="glow-orb orb-2"></div>
@@ -354,9 +352,9 @@ def build_dashboard():
             </span>
           </div>
           <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
-            <span>컴퓨터/IT 일간 베스트셀러 658권 전수 분석</span>
+            <span>컴퓨터/IT 일간 베스트셀러 {{TOTAL_BOOKS}}권 전수 분석</span>
             <span>•</span>
-            <span class="text-slate-400">기준일자: 2026-10-20</span>
+            <span class="text-slate-400">기준일자: {{FORMATTED_DATE}}</span>
           </p>
         </div>
       </div>
@@ -389,7 +387,7 @@ def build_dashboard():
           <span class="text-sm text-slate-500 ml-1">권</span>
         </div>
         <p class="text-xs text-emerald-600 mt-2 flex items-center gap-1 font-semibold">
-          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 100% 전수 수집 완료
+          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 100% 전수 수집 완료 (마지막 593위)
         </p>
       </div>
 
@@ -423,7 +421,7 @@ def build_dashboard():
           <span class="text-sm text-slate-500 ml-1">/ 10.0</span>
         </div>
         <p class="text-xs text-purple-700 mt-2 flex items-center gap-1 font-semibold">
-          <i data-lucide="award" class="w-3.5 h-3.5"></i> 평점 보유 도서 만점율 47.1%
+          <i data-lucide="award" class="w-3.5 h-3.5"></i> 평점 보유 도서 만점율 47% 이상
         </p>
       </div>
 
@@ -456,7 +454,7 @@ def build_dashboard():
               <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
               도서 판매가 구간별 분포
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">1.5만~3만원대 가격 밴드에 73% 밀집</p>
+            <p class="text-xs text-slate-500 mt-0.5">1.5만~3만원대 가격 밴드에 집중</p>
           </div>
           <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Bar Chart</span>
         </div>
@@ -473,7 +471,7 @@ def build_dashboard():
               <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
               상위 10대 출판사 점유율
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">한빛미디어, 길벗, 영진닷컴 등 상위 3사가 30% 장악</p>
+            <p class="text-xs text-slate-500 mt-0.5">한빛미디어, 길벗, 영진닷컴 등 상위 3사 과점</p>
           </div>
           <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Doughnut</span>
         </div>
@@ -490,7 +488,7 @@ def build_dashboard():
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               출간 연도별 신간 진입 추이 (2018~2026)
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">2026년 개정판 및 신간 도서가 48.2% 차지</p>
+            <p class="text-xs text-slate-500 mt-0.5">2026년 개정판 및 신간 도서 집중 분포</p>
           </div>
           <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Line & Area</span>
         </div>
@@ -507,7 +505,7 @@ def build_dashboard():
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
               순위 구간별 평균 독자 리뷰 수
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">최상위 1~50위권 도서의 압도적 리뷰 독점(53.3건)</p>
+            <p class="text-xs text-slate-500 mt-0.5">최상위 1~50위권 도서의 압도적 리뷰 독점</p>
           </div>
           <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-medium">Bar Chart</span>
         </div>
@@ -571,7 +569,6 @@ def build_dashboard():
 
       <!-- 검색 및 다중 필터 컨트롤 바 -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- 텍스트 검색창 -->
         <div class="relative">
           <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none"></i>
           <input type="text" id="searchInput" placeholder="도서명, 저자, 출판사 검색..." 
@@ -579,7 +576,6 @@ def build_dashboard():
             oninput="handleSearch()">
         </div>
 
-        <!-- 출판사 필터 -->
         <div>
           <select id="publisherFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
             <option value="">모든 출판사 (전체)</option>
@@ -587,7 +583,6 @@ def build_dashboard():
           </select>
         </div>
 
-        <!-- 가격대 필터 -->
         <div>
           <select id="priceFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
             <option value="">모든 가격대 (전체)</option>
@@ -597,7 +592,6 @@ def build_dashboard():
           </select>
         </div>
 
-        <!-- 최소 평점 필터 -->
         <div>
           <select id="ratingFilter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" onchange="handleFilter()">
             <option value="">모든 평점 (전체)</option>
@@ -632,7 +626,6 @@ def build_dashboard():
             </tr>
           </thead>
           <tbody id="bookTableBody" class="divide-y divide-slate-100 font-normal">
-            <!-- JavaScript 렌더링 영역 -->
           </tbody>
         </table>
       </div>
@@ -640,7 +633,7 @@ def build_dashboard():
       <!-- 페이지네이션 컨트롤 바 -->
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
         <div class="text-xs text-slate-500">
-          <span id="pageInfo">1 / 14 페이지</span> (페이지당 
+          <span id="pageInfo">1 / 12 페이지</span> (페이지당 
           <select id="pageSizeSelect" class="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs text-slate-700 shadow-sm" onchange="changePageSize()">
             <option value="15">15</option>
             <option value="30">30</option>
@@ -652,7 +645,6 @@ def build_dashboard():
             이전
           </button>
           <div id="pageButtons" class="flex items-center gap-1">
-            <!-- 페이지 번호 버튼들 -->
           </div>
           <button id="nextBtn" onclick="nextPage()" class="glass-panel px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition border border-slate-200 shadow-sm">
             다음
@@ -671,7 +663,6 @@ def build_dashboard():
   <!-- 도서 상세 정보 글래스 모달 -->
   <div id="bookModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
     <div class="bg-white/95 backdrop-blur-xl max-w-2xl w-full p-6 md:p-8 space-y-6 relative rounded-2xl border border-white shadow-2xl">
-      <!-- 닫기 버튼 -->
       <button onclick="closeModal()" class="absolute right-5 top-5 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
@@ -687,7 +678,6 @@ def build_dashboard():
         </p>
       </div>
 
-      <!-- 메트릭 그리드 -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
         <div>
           <span class="text-xs text-slate-500 block">판매가</span>
@@ -709,7 +699,6 @@ def build_dashboard():
         </div>
       </div>
 
-      <!-- 도서 소개글 -->
       <div class="space-y-2">
         <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">도서 소개 (Introduction)</span>
         <div id="modalIntro" class="text-sm text-slate-700 bg-white p-4 rounded-xl max-h-48 overflow-y-auto leading-relaxed border border-slate-200 shadow-inner">
@@ -717,7 +706,6 @@ def build_dashboard():
         </div>
       </div>
 
-      <!-- 하단 바코드/ID 정보 -->
       <div class="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
         <span>ISBN: <strong id="modalIsbn" class="text-slate-700 font-mono">-</strong></span>
         <span>상품 ID: <strong id="modalBookId" class="text-slate-700 font-mono">-</strong></span>
@@ -725,7 +713,6 @@ def build_dashboard():
     </div>
   </div>
 
-  <!-- 임베디드 데이터셋 및 비즈니스 로직 -->
   <script>
     const ALL_BOOKS = {{BOOKS_DATA_JSON}};
     const CHART_DATA = {
@@ -742,7 +729,6 @@ def build_dashboard():
     let pageSize = 15;
     let currentSort = { column: 'rank', asc: true };
 
-    // 화이트 톤 Chart.js 글로벌 스타일
     Chart.defaults.color = '#64748b';
     Chart.defaults.font.family = 'Pretendard';
     Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(255, 255, 255, 0.95)';
@@ -755,7 +741,6 @@ def build_dashboard():
     Chart.defaults.plugins.tooltip.boxPadding = 4;
 
     function initCharts() {
-      // 차트 1: 가격대별 분포
       new Chart(document.getElementById('chart1'), {
         type: 'bar',
         data: {
@@ -780,7 +765,6 @@ def build_dashboard():
         }
       });
 
-      // 차트 2: 상위 10대 출판사 점유율
       new Chart(document.getElementById('chart2'), {
         type: 'doughnut',
         data: {
@@ -807,7 +791,6 @@ def build_dashboard():
         }
       });
 
-      // 차트 3: 출간 연도별 추이
       new Chart(document.getElementById('chart3'), {
         type: 'line',
         data: {
@@ -835,7 +818,6 @@ def build_dashboard():
         }
       });
 
-      // 차트 4: 순위 구간별 리뷰 수
       new Chart(document.getElementById('chart4'), {
         type: 'bar',
         data: {
@@ -860,7 +842,6 @@ def build_dashboard():
         }
       });
 
-      // 차트 5: 평점 구간별 분포
       new Chart(document.getElementById('chart5'), {
         type: 'polarArea',
         data: {
@@ -891,7 +872,6 @@ def build_dashboard():
         }
       });
 
-      // 차트 6: TF-IDF 키워드
       new Chart(document.getElementById('chart6'), {
         type: 'bar',
         data: {
@@ -918,7 +898,6 @@ def build_dashboard():
       });
     }
 
-    // 테이블 필터링 및 검색 로직
     function handleSearch() {
       handleFilter();
     }
@@ -1067,7 +1046,6 @@ def build_dashboard():
       handleFilter();
     }
 
-    // 모달 제어
     function openModal(bookId) {
       const book = ALL_BOOKS.find(b => b.book_id === bookId);
       if (!book) return;
@@ -1102,7 +1080,6 @@ def build_dashboard():
       if (e.target.id === 'bookModal') closeModal();
     });
 
-    // CSV 다운로드 기능
     function exportCSV() {
       let csvContent = "data:text/csv;charset=utf-8,\\uFEFF";
       const headers = ["순위", "도서명", "저자", "출판사", "판매가", "정가", "할인율", "리뷰수", "평점", "출간일", "ISBN"];
@@ -1151,6 +1128,7 @@ def build_dashboard():
         "{{AVG_RATING}}": f"{avg_rating}",
         "{{MAX_REVIEWS}}": f"{max_reviews:,}",
         "{{TOP_REVIEW_TITLE}}": top_reviewed_book,
+        "{{FORMATTED_DATE}}": formatted_date,
         "{{PUBLISHER_OPTIONS}}": pub_options,
         "{{BOOKS_DATA_JSON}}": json.dumps(books_data, ensure_ascii=False),
         "{{CHART1_DATA_JSON}}": json.dumps(chart1_data, ensure_ascii=False),
