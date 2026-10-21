@@ -41,6 +41,8 @@ raw_data/
 *.sqlite
 *.db
 # (필요 시 특정 설정 JSON 파일 등은 !config.json 형태로 예외 허용 가능)
+!.agents/**/*.json
+!.agents/*.json
 
 # ==============================================================================
 # 환경 변수 및 보안 비밀키 (Secrets & Credentials)

@@ -131,6 +131,46 @@ uv run python kyobo/src/build_dashboard.py
 
 ---
 
+## 🤖 범용 웹 수집·EDA·대시보드 자동화 에이전트 프레임워크 (`.agents/`)
+
+교보문고와 예스24 프로젝트에서 실증된 파이프라인을 완전히 표준화하여, **어떠한 신규 웹사이트(이커머스, 채용, 포털, 미디어 등)**라도 일관된 품질로 수집부터 웹 대시보드 배포까지 완수할 수 있는 5대 핵심 커스터마이징 자산을 저장소에 일체형으로 탑재했습니다:
+
+```text
+.agents/
+├── rules/
+│   └── universal-pipeline.md        # 5대 표준 디렉터리 강제 및 운영 규칙
+├── skills/
+│   └── universal-data-pipeline/     # 범용 파이프라인 실행 스킬
+│       ├── SKILL.md                 # 6단계 엔드투엔드 실행 지침
+│       └── templates/               # 재사용 가능한 코드 템플릿 4종
+│           ├── scraper_template.py      # REST API/정적 스크래퍼 베이스
+│           ├── eda_template.py          # 10종 차트 & Scikit-learn TF-IDF 분석기
+│           ├── dashboard_template.html  # 화이트 글래스모피즘 웹 대시보드
+│           └── report_template.md       # 20년차 데이터 분석가 종합 리포트 서식
+├── hooks/
+│   ├── hooks.json                   # PostToolUse 파일 저장 감지 훅
+│   └── verify_csv_integrity.py      # UTF-8-SIG 인코딩, 결측치 0% 감사기
+└── agents/
+    └── definitions.json             # 4대 전문 서브에이전트 역할 정의
+        ├── site-crawler             # REST API 역공학 및 전수 수집
+        ├── eda-analyst              # 10종 차트 생성 및 심층 리포트 작성
+        ├── dashboard-architect      # Chart.js 웹 대시보드 UI/UX 구축
+        └── pipeline-orchestrator    # PR 머지 및 GitHub Pages 라이브 배포 총괄
+```
+
+### ⚡ 새로운 사이트 적용 방법
+1. **사이트 지정 및 요청**:
+   - 사용자가 *"알라딘 베스트셀러 수집해서 대시보드까지 만들어줘"*와 같이 요청합니다.
+2. **에이전트 파이프라인 자동 구동**:
+   - `.agents/rules/universal-pipeline.md`에 따라 프로젝트 폴더 생성(`data/`, `src/`, `images/`, `docs/`, `reports/`)
+   - `site-crawler`가 API 트래픽 역공학 후 `scraper.py`를 실행하여 UTF-8-SIG CSV 생성
+   - `.agents/hooks/verify_csv_integrity.py`가 데이터셋의 무결성(결측률, 인코딩, 연속성)을 자동 검증
+   - `eda-analyst`가 10종 고해상도 차트와 2,000자 이상의 심층 마크다운 보고서(`reports/EDA_Report.md`) 작성
+   - `dashboard-architect`가 Chart.js 기반 글래스모피즘 웹 대시보드(`src/dashboard.html`) 완성
+   - `pipeline-orchestrator`가 GitHub Pages에 라이브 배포
+
+---
+
 ## 📄 라이선스 및 문의
 - 본 프로젝트는 교육 및 연구 목적으로 제작되었습니다.
 - 문의 사항은 저장소 [Issues](https://github.com/CodeZ00/DATACRAWLING/issues) 탭을 이용해 주시기 바랍니다.

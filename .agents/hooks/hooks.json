@@ -1,0 +1,17 @@
+{
+  "csv-integrity-guard": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "write_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python verify_csv_integrity.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
