@@ -1,7 +1,7 @@
 """교보문고 컴퓨터/IT 베스트셀러 데이터 수집 스크립트.
 
 교보문고 내부 REST Gateway API를 직접 호출하여
-컴퓨터/IT 일간 베스트셀러 전체 목록을 수집하고 CSV로 저장합니다.
+컴퓨터/IT 일간 베스트셀러 전체 목록(마지막 순위 593위)을 수집하고 CSV로 저장합니다.
 """
 
 import csv
@@ -20,9 +20,7 @@ def clean_html(text: str) -> str:
     """HTML 태그 제거 및 불필요한 연속 공백 정제."""
     if not text:
         return ""
-    # HTML 태그 제거
     clean = re.sub(r"<[^>]+>", " ", text)
-    # 다중 공백 및 줄바꿈 정리
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
 
@@ -65,7 +63,6 @@ def fetch_kyobo_page(page: int = 1, per: int = 50) -> dict:
         content_encoding = resp.headers.get("Content-Encoding", "").lower()
         raw_data = resp.read()
 
-        # GZIP 압축 해제 처리 (헤더 지정 또는 매직 바이트 확인)
         if "gzip" in content_encoding or raw_data.startswith(b"\x1f\x8b"):
             decompressed = gzip.decompress(raw_data)
             return json.loads(decompressed.decode("utf-8"))
@@ -94,8 +91,8 @@ def parse_book_item(item: dict) -> dict:
     }
 
 
-def scrape_all_kyobo_bestsellers() -> list[dict]:
-    """전체 베스트셀러 목록을 페이징하여 수집합니다."""
+def scrape_all_kyobo_bestsellers(max_rank: int = 593) -> list[dict]:
+    """전체 베스트셀러 목록을 페이징하여 수집합니다 (최대 순위 제한 지원)."""
     print(">>> 1페이지 조회 시작 (전체 도서 수 확인)...")
     first_res = fetch_kyobo_page(page=1, per=50)
 
@@ -103,15 +100,18 @@ def scrape_all_kyobo_bestsellers() -> list[dict]:
     total_count = data_section.get("total", 0)
     best_sellers = data_section.get("bestSeller", [])
 
-    print(f">>> 전체 등록 도서 수: {total_count}건")
+    print(f">>> API 반환 전체 등록 도서 수: {total_count}건, 수집 제한 순위: {max_rank}위")
 
     all_books = []
     for item in best_sellers:
-        all_books.append(parse_book_item(item))
+        parsed = parse_book_item(item)
+        if parsed["rank"] and int(parsed["rank"]) <= max_rank:
+            all_books.append(parsed)
 
     per = 50
-    total_pages = math.ceil(total_count / per)
-    print(f">>> 총 페이지 수: {total_pages}페이지 (1페이지 {len(best_sellers)}건 수집 완료)")
+    target_count = min(total_count, max_rank)
+    total_pages = math.ceil(target_count / per)
+    print(f">>> 총 수집 대상 페이지: {total_pages}페이지 (1페이지 {len(all_books)}건 수집 완료)")
 
     for page in range(2, total_pages + 1):
         print(f">>> {page}/{total_pages} 페이지 수집 중...")
@@ -122,13 +122,33 @@ def scrape_all_kyobo_bestsellers() -> list[dict]:
             if not items:
                 print(f"    {page}페이지에 더 이상 데이터가 없습니다.")
                 break
+            
+            added_count = 0
             for item in items:
-                all_books.append(parse_book_item(item))
-            print(f"    {page}페이지 수집 완료: +{len(items)}건 (누적: {len(all_books)}건)")
+                parsed = parse_book_item(item)
+                if parsed["rank"] and int(parsed["rank"]) <= max_rank:
+                    all_books.append(parsed)
+                    added_count += 1
+            
+            print(f"    {page}페이지 수집 완료: +{added_count}건 (누적: {len(all_books)}건)")
+            
+            # 마지막 순위 도달 시 조기 종료
+            if all_books and int(all_books[-1]["rank"]) >= max_rank:
+                print(f">>> 지정한 마지막 순위({max_rank}위)에 도달하여 수집을 종료합니다.")
+                break
         except Exception as e:
             print(f"    [오류] {page}페이지 수집 중 에러 발생: {e}")
 
-    return all_books
+    # 최종 순위 기준 정렬 및 중복 제거
+    seen_ids = set()
+    unique_books = []
+    for b in all_books:
+        if b["book_id"] not in seen_ids:
+            seen_ids.add(b["book_id"])
+            unique_books.append(b)
+
+    unique_books.sort(key=lambda x: int(x["rank"]) if x["rank"] else 9999)
+    return unique_books
 
 
 def save_to_csv(books: list[dict], output_path: Path):
@@ -167,15 +187,16 @@ def main():
     output_path = Path("kyobo") / "data" / f"kyobo_daily_it_bestseller_{today_str}.csv"
 
     print("=" * 60)
-    print("교보문고 컴퓨터/IT 베스트셀러 데이터 수집 시작")
+    print("교보문고 컴퓨터/IT 베스트셀러 데이터 재수집 시작")
+    print(f"목표 마지막 순위: 593위")
     print(f"저장 예정 경로: {output_path}")
     print("=" * 60)
 
-    books = scrape_all_kyobo_bestsellers()
+    books = scrape_all_kyobo_bestsellers(max_rank=593)
     save_to_csv(books, output_path)
 
     print("=" * 60)
-    print("수집 완료!")
+    print(f"수집 완료! (총 {len(books)}건, 1위 ~ {books[-1]['rank'] if books else 0}위)")
     print("=" * 60)
 
 
