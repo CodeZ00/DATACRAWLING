@@ -37,22 +37,22 @@ flowchart TD
 
 ---
 
-### Step 2: 스크래퍼 구축 및 전수 수집
+### Step 2: 복원력 높은 스크래퍼 구축 및 데이터 계약(Data Contract) 검증
 1. **표준 디렉터리 구성**:
    - 프로젝트 루트 아래 `{site_name}/` 폴더 생성 및 5대 표준 서브폴더(`data/`, `src/`, `images/`, `docs/`, `reports/`) 구축
 2. **스크래퍼 스크립트 작성 (`src/scraper.py`)**:
-   - `templates/scraper_template.py`를 기반으로 작성
-   - GZIP 응답(`0x1f 0x8b`) 자동 압축 해제 처리
-   - 요청 간 대기시간(`time.sleep(0.5)`) 의무 적용으로 서버 부하 방지
+   - `data/checkpoint.json` 상태 관리 파일을 활용하여 수집 중단 시 마지막 페이지/인덱스부터 자동 이어받기
+   - 지수 백오프(Exponential Backoff with Jitter) 및 401/403 감지 시 세션 자동 갱신
+   - GZIP 응답(`0x1f 0x8b`) 자동 압축 해제 처리 및 요청 간 대기시간(`time.sleep(0.5)`) 의무화
    - HTML 엔티티 정제(`&lt;`, `&gt;`, `&amp;` 및 태그 제거)
-3. **데이터 저장 및 무결성 검증**:
-   - 엑셀 호환을 위해 반드시 **`UTF-8-SIG`** 인코딩으로 CSV 저장
-   - 파일명: `data/{site}_daily_{category}_{YYYYMMDD}.csv`
-   - `.agents/hooks/verify_csv_integrity.py`를 실행하여 100% 무결성(행 수, 결측치 0%, 순위 연속성) 확인
+3. **Pydantic 스키마 데이터 계약 및 저장 무결성 검증**:
+   - Pydantic 모델을 통한 필드 타입 강제, 필수 필드 및 수치 범위 유효성 검사 수행
+   - 엑셀 호환을 위해 반드시 **`UTF-8-SIG`** 인코딩으로 CSV 저장 (`data/{site}_daily_{category}_{YYYYMMDD}.csv`)
+   - `.agents/hooks/verify_csv_integrity.py`를 실행하여 무결성(행 수, 결측치 0%, 스키마 적합성) 자동 검증
 
 ---
 
-### Step 3: 심층 탐색적 데이터 분석 (EDA)
+### Step 3: 심층 탐색적 데이터 분석 (EDA) & 대시보드 요약 사전 집계
 1. **20년차 데이터 분석가 가이드라인 준수**:
    - `templates/eda_template.py` 템플릿 기반 구현
    - 데이터 기본 정보: `head()`, `tail()`, `info()`, `describe()`, 결측치 및 중복치 점검
@@ -61,7 +61,9 @@ flowchart TD
    - 전역 스타일(`sns.set_theme()`, `sns.set_style()`) 설정 금지 (단일 플롯 단위 스타일링)
    - 최소 10종 이상의 고해상도(DPI 150) 차트 생성 후 `images/` 폴더에 저장
 3. **Scikit-learn 기반 텍스트 마이닝**:
-   - 무거운 형태소 분석기 대신 `TfidfVectorizer`를 사용하여 주요 키워드 상위 30위 가중치 도출 및 시각화
+   - `TfidfVectorizer`를 사용하여 주요 키워드 상위 30위 가중치 도출 및 시각화
+4. **대시보드 전용 경량 집계 요약 (`data/summary_data.json`) 생성**:
+   - 대용량 데이터 시각화 렉을 방지하기 위해 KPI, 차트별 사전 집계 데이터를 별도 JSON으로 산출
 
 ---
 
@@ -74,9 +76,10 @@ flowchart TD
 ---
 
 ### Step 5: 글래스모피즘 인터랙티브 웹 대시보드 구축
-1. **단일 파일(Single File HTML) 아키텍처**:
-   - 별도 WAS 없이 로컬(`file://`) 및 정적 웹 호스팅에서 즉시 구동 가능하도록 데이터셋을 JSON 인라인 임베드
-   - `templates/dashboard_template.html` 기반 커스터마이징
+1. **비동기 Fetch 및 가상 스크롤 아키텍처**:
+   - `src/dashboard.html`에서 `data/summary_data.json`을 비동기 `fetch()`로 경량 로딩하여 차트 렌더링 지연 제거
+   - 대용량 상세 테이블은 가상 스크롤(Virtualization) 또는 페이징 처리로 DOM 렌더링 렉 원천 차단
+   - 로컬(`file://`) 및 웹 호스팅 환경 모두 지원
 2. **UI & UX 시스템**:
    - 앰비언트 글로우(Ambient Glow) 배경 애니메이션 및 반투명 블러 패널
    - Chart.js v4 기반 6대 핵심 차트 탑재
@@ -84,12 +87,13 @@ flowchart TD
 
 ---
 
-### Step 6: Git 워크플로우 및 라이브 배포
-1. **Git 버전 관리**:
+### Step 6: Git 워크플로우 & GitHub Actions 라이브 배포
+1. **중앙 상태 매니페스트 관리**:
+   - `pipeline_manifest.json`에 전체 파이프라인 완료 상태 및 산출물 경로 최종 기록
+2. **Git 버전 관리 & GitHub Actions CI/CD**:
    - `feat/{site}-pipeline` 브랜치 생성 및 Conventional Commit 적용
-2. **온라인 라이브 배포 (GitHub Pages)**:
-   - `gh-pages` 브랜치에 배포용 `index.html`로 대시보드 복사 후 푸시
-   - 웹앱 URL(`https://{username}.github.io/{repo}/`) 접속 확인 및 루트 `README.md` 링크 갱신
+   - PR 생성 시 데이터 무결성 CI 자동 검증 실행
+   - `main` 브랜치 머지 시 `.github/workflows/deploy.yml`을 통해 GitHub Pages에 무중단 라이브 자동 배포
 
 ---
 
