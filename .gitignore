@@ -75,6 +75,7 @@ desktop.ini
 logs/
 temp/
 tmp/
+*temp*.html
 .cache/
 .pytest_cache/
 .mypy_cache/

@@ -52,6 +52,12 @@ DATACRAWLING/
 │       ├── github_workflow.py                     # GitHub Issue/PR 자동화 스크립트
 │       ├── kyobo_bestseller_scraper.py            # 교보문고 REST Gateway API 스크래퍼
 │       └── kyobo_eda_analysis.py                  # 11종 차트 생성 심층 EDA 스크립트
+├── starbucks/                     # 스타벅스 전국 매장 전수 수집 & 상권 심층 분석 프로젝트
+│   ├── dashboard.html             # 독립형 에메랄드 글래스모피즘 웹 대시보드
+│   ├── docs/                      # API 규격서, 수집 계획서, 구현 계획서, 워크스루
+│   ├── images/                    # 10종 고해상도 EDA 시각화 차트 (PNG)
+│   ├── reports/                   # 20년차 데이터 분석가 심층 분석 종합 보고서 (Markdown)
+│   └── src/                       # 스크래퍼, EDA 분석기, 대시보드 빌더, PDF 변환기
 └── yes24/                         # 예스24 베스트셀러 프로젝트
     ├── docs/                      # 예스24 스크래핑 명세 및 슬라이드 프롬프트
     ├── images/                    # 예스24 EDA 분석 차트 이미지
@@ -75,6 +81,11 @@ DATACRAWLING/
 - 예스24 일간 베스트셀러 웹 스크래핑 및 정제
 - 도서 판매지수, 가격, 리뷰, 출판사별 EDA 시각화
 - Marp 기반 프리젠테이션 슬라이드 및 엑셀 대시보드 자동화
+
+### 3. 스타벅스 (starbucks)
+- **전국 매장 전수 수집**: 스타벅스 Gateway REST API(`getStore.do`) 연동으로 17개 시도 2,213개 전 매장 무결점 전수 수집
+- **지리/상권 심층 EDA (10개 차트)**: 서울 구별 밀집도, 드라이브스루(DT) 권역 비교, 개점 연도별 확장 추이, 텍스트 마이닝(TF-IDF) 등 20년차 분석가 수준의 비즈니스 리포트 도출
+- **에메랄드 글래스모피즘 웹 대시보드**: 독립형 단일 HTML 파일로 전국 매장 실시간 검색, 시도/유형 필터링, Chart.js 동적 시각화 및 CSV 즉시 내보내기 지원
 
 ---
 
