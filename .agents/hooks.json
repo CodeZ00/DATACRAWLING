@@ -13,5 +13,27 @@
         ]
       }
     ]
+  },
+  "auto-git-commit": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python .agents/hooks/auto_git_commit.py --hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "uv run python .agents/hooks/auto_git_commit.py --hook",
+        "timeout": 30
+      }
+    ]
   }
 }
