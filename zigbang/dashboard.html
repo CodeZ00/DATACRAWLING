@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세종 정부청사 오피스텔 실거주 가성비 대시보드 | 직방 빅데이터</title>
+  
+  <!-- Pretendard 폰트 & Tailwind CSS CDN -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js v4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%);
+      min-height: 100vh;
+      color: #1E293B;
+      font-family: 'Pretendard', sans-serif;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      box-shadow: 0 10px 30px -5px rgba(217, 119, 6, 0.08), 0 4px 12px -2px rgba(217, 119, 6, 0.04);
+    }
+    .glass-card-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 35px -5px rgba(217, 119, 6, 0.15);
+      border-color: rgba(245, 158, 11, 0.6);
+    }
+    .glass-input {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+    .glass-input:focus {
+      outline: none;
+      border-color: #F59E0B;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(254, 243, 199, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(245, 158, 11, 0.4);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(217, 119, 6, 0.7);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+  <!-- 전체 컨테이너 -->
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- 상단 헤더 -->
+    <header class="glass-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+      <div class="absolute -right-12 -top-12 w-48 h-48 bg-amber-400 rounded-full opacity-20 blur-3xl pointer-events-none"></div>
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm flex items-center gap-1">
+            <i data-lucide="building-2" class="w-3.5 h-3.5"></i> 직방 공식 연동 빅데이터
+          </span>
+          <span class="text-xs text-amber-800 font-medium">정부세종청사 도보 생활권</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+          세종청사 오피스텔 <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">실거주 가성비 대시보드</span>
+        </h1>
+        <p class="text-slate-600 text-sm mt-1">
+          어진동 · 나성동 · 도담동 28개 단지 실매물 전수 분석 | 20년차 분석가 설계
+        </p>
+      </div>
+
+      <!-- 액션 버튼군 -->
+      <div class="flex items-center gap-2 w-full md:w-auto">
+        <button onclick="openCalcModal()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+          <i data-lucide="calculator" class="w-4 h-4"></i> 월 주거비 계산기
+        </button>
+        <button onclick="exportToCSV()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2">
+          <i data-lucide="download" class="w-4 h-4"></i> CSV 다운로드
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI 요약 카드 5종 -->
+    <section class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="glass-card rounded-2xl p-4 glass-card-hover">
+        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+          <i data-lucide="home" class="w-3.5 h-3.5 text-amber-500"></i> 총 분석 매물
+        </div>
+        <div class="text-2xl font-black text-slate-800" id="kpi-total">-</div>
+        <div class="text-[11px] text-amber-700 mt-1">어진동 58.3% 집중</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 glass-card-hover">
+        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+          <i data-lucide="coins" class="w-3.5 h-3.5 text-amber-500"></i> 평균 보증금
+        </div>
+        <div class="text-2xl font-black text-slate-800" id="kpi-deposit">-</div>
+        <div class="text-[11px] text-slate-500 mt-1">월세 보증금 중앙값 500만</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 glass-card-hover">
+        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+          <i data-lucide="credit-card" class="w-3.5 h-3.5 text-amber-500"></i> 평균 월세
+        </div>
+        <div class="text-2xl font-black text-slate-800" id="kpi-rent">-</div>
+        <div class="text-[11px] text-emerald-600 mt-1">55~65만원대 최다 분포</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 glass-card-hover border-amber-400 bg-amber-50/50">
+        <div class="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1">
+          <i data-lucide="receipt" class="w-3.5 h-3.5 text-orange-500"></i> 월 총 주거비용 (핵심)
+        </div>
+        <div class="text-2xl font-black text-orange-600" id="kpi-total-cost">-</div>
+        <div class="text-[11px] text-amber-700 mt-1">월세 + 관리비 합산</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 glass-card-hover col-span-2 md:col-span-1">
+        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i> 전용 평당 월세
+        </div>
+        <div class="text-2xl font-black text-slate-800" id="kpi-pyeong-rent">-</div>
+        <div class="text-[11px] text-slate-500 mt-1">평균 전용 7.3평 기준</div>
+      </div>
+    </section>
+
+    <!-- 인터랙티브 필터 컨트롤러 바 -->
+    <section class="glass-card rounded-2xl p-4 md:p-5 flex flex-wrap gap-4 items-center justify-between">
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <!-- 검색창 -->
+        <div class="relative flex-1 md:w-64">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="filter-search" oninput="applyFilters()" placeholder="단지명, 매물 제목 검색..." class="glass-input w-full pl-9 pr-3 py-2 rounded-xl text-sm text-slate-800" />
+        </div>
+
+        <!-- 동 필터 -->
+        <select id="filter-dong" onchange="applyFilters()" class="glass-input px-3 py-2 rounded-xl text-sm font-medium text-slate-700">
+          <option value="ALL">전체 행정동</option>
+          <option value="어진동">어진동 (청사 도보권)</option>
+          <option value="나성동">나성동 (상업/문화)</option>
+          <option value="도담동">도담동 (북부/마트)</option>
+        </select>
+
+        <!-- 거래유형 필터 -->
+        <select id="filter-type" onchange="applyFilters()" class="glass-input px-3 py-2 rounded-xl text-sm font-medium text-slate-700">
+          <option value="ALL">전체 거래유형</option>
+          <option value="월세">월세 (88.9%)</option>
+          <option value="전세">전세</option>
+          <option value="매매">매매</option>
+        </select>
+
+        <!-- 최대 총 주거비 슬라이더 필터 -->
+        <div class="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-xl border border-amber-200">
+          <span class="text-xs font-semibold text-slate-600">최대 주거비:</span>
+          <input type="range" id="filter-max-cost" min="40" max="120" value="120" step="5" oninput="updateCostSlider(this.value)" class="w-24 accent-amber-500 cursor-pointer">
+          <span id="slider-cost-val" class="text-xs font-bold text-amber-700">전체</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium">
+        조회 결과: <strong id="filter-count" class="text-amber-600 font-black">-</strong>건
+      </div>
+    </section>
+
+    <!-- 차트 그리드 6종 -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- 차트 1: 동별 점유율 도넛 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>행정동별 매물 분포</span>
+          <i data-lucide="pie-chart" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60 flex items-center justify-center">
+          <canvas id="chartDong"></canvas>
+        </div>
+      </div>
+
+      <!-- 차트 2: 총 주거비용 구간 분포 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>월 총 주거비용(월세+관리비) 구간</span>
+          <i data-lucide="bar-chart-3" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60">
+          <canvas id="chartCostDist"></canvas>
+        </div>
+      </div>
+
+      <!-- 차트 3: 면적 대비 월세 상관 산점도 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>전용면적(평) vs 월세 상관관계</span>
+          <i data-lucide="scatter-chart" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60">
+          <canvas id="chartAreaRent"></canvas>
+        </div>
+      </div>
+
+      <!-- 차트 4: 단지별 평당 관리비 부담률 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>단지별 전용 평당 관리비</span>
+          <i data-lucide="gauge" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60">
+          <canvas id="chartManage"></canvas>
+        </div>
+      </div>
+
+      <!-- 차트 5: 층수 비율별 임대료 프리미엄 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>층수 그룹별 평당 월세 프리미엄</span>
+          <i data-lucide="trending-up" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60">
+          <canvas id="chartFloor"></canvas>
+        </div>
+      </div>
+
+      <!-- 차트 6: TF-IDF 핵심 키워드 Top 10 -->
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span>거주민 리뷰 & 설명 키워드</span>
+          <i data-lucide="hash" class="w-4 h-4 text-amber-500"></i>
+        </h3>
+        <div class="h-60">
+          <canvas id="chartKeywords"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 매물 전수 실시간 탐색 데이터 테이블 -->
+    <section class="glass-card rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+            <i data-lucide="table" class="w-5 h-5 text-amber-500"></i> 세종 오피스텔 실매물 전수 목록
+          </h2>
+          <p class="text-xs text-slate-500">컬럼 헤더를 클릭하면 오름차순/내림차순으로 즉시 정렬됩니다.</p>
+        </div>
+        <div class="text-xs text-slate-500">
+          페이지 <span id="page-num" class="font-bold text-amber-700">1</span> / <span id="total-pages">1</span>
+        </div>
+      </div>
+
+      <!-- 반응형 테이블 -->
+      <div class="overflow-x-auto rounded-xl border border-amber-200 bg-white/70">
+        <table class="w-full text-left text-sm text-slate-700">
+          <thead class="bg-amber-100/70 text-xs font-bold text-amber-900 border-b border-amber-200">
+            <tr>
+              <th onclick="sortTable('dong')" class="p-3 cursor-pointer hover:bg-amber-200/50">동 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('danji_name')" class="p-3 cursor-pointer hover:bg-amber-200/50">단지명 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('sales_type')" class="p-3 cursor-pointer hover:bg-amber-200/50">유형 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('deposit_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">보증금(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('rent_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">월세(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('manage_cost_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">관리비(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('total_monthly_cost_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right text-orange-600 font-black">총 주거비 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('exclusive_area_pyeong')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">전용평수 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th onclick="sortTable('floor')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-center">층수 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
+              <th class="p-3">매물 상세 / 제목</th>
+              <th class="p-3 text-center">상세</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-amber-100">
+            <!-- 동적 렌더링 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 페이지네이션 컨트롤러 -->
+      <div class="flex items-center justify-center gap-2 mt-4" id="pagination-controls">
+        <!-- 동적 페이지 버튼 -->
+      </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="text-center text-xs text-slate-500 py-4">
+      직방(Zigbang) 오피스텔 지도 공식 REST API 연동 분석 파이프라인 | End-to-End Automated by Universal Data Pipeline
+    </footer>
+
+  </div>
+
+  <!-- 상세 정보 모달 -->
+  <div id="itemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="glass-card bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-700">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- 주거비 계산기 모달 -->
+  <div id="calcModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="glass-card bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="closeCalcModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-700">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <i data-lucide="calculator" class="w-5 h-5 text-amber-500"></i> 월 실질 주거비용 계산기
+      </h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">월세 (만원)</label>
+          <input type="number" id="calc-rent" value="55" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl font-bold text-slate-800" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">관리비 (원)</label>
+          <input type="number" id="calc-manage" value="110000" step="5000" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl font-bold text-slate-800" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">보증금 대출이자 or 기회비용 (연이율 4.0% 가정, 만원)</label>
+          <input type="number" id="calc-deposit" value="500" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl text-slate-800" />
+        </div>
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200">
+          <div class="text-xs text-amber-800 font-medium">예상되는 월 실제 총 지출액:</div>
+          <div class="text-3xl font-black text-orange-600 mt-1" id="calc-result">67.7만원</div>
+          <div class="text-[11px] text-slate-500 mt-1">월세 + 관리비 + 보증금 금융기회비용(연 4%)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 전수 데이터 인라인 번들링 -->
+  <script>
+    const RAW_DATA = {"metadata": {"title": "세종특별자치시 정부청사 생활권(어진동·나성동·도담동) 오피스텔 실매물 분석", "total_items": 36, "total_rent_items": 32, "generated_at": "2026-10-27 13:43:55"}, "kpi": {"avg_deposit": 3436.9, "avg_rent": 52.3, "avg_manage_cost": 132500.0, "avg_total_cost": 65.1, "avg_pyeong": 8.5, "avg_pyeong_rent": 6.41}, "dong_stats": {"나성동": {"count": 21, "avg_rent": 55.1, "avg_total_cost": 68.8, "avg_pyeong": 8.8, "avg_pyeong_rent": 6.4}, "도담동": {"count": 1, "avg_rent": 55.0, "avg_total_cost": 68.0, "avg_pyeong": 5.8, "avg_pyeong_rent": 9.48}, "어진동": {"count": 14, "avg_rent": 46.1, "avg_total_cost": 57.1, "avg_pyeong": 8.2, "avg_pyeong_rent": 6.12}}, "sales_type_counts": {"월세": 32, "전세": 2, "매매": 2}, "top_keywords": [{"keyword": "도보", "score": 0.2158}, {"keyword": "brt", "score": 0.2003}, {"keyword": "정류장", "score": 0.1988}, {"keyword": "호수공원", "score": 0.1967}, {"keyword": "거리", "score": 0.1942}, {"keyword": "산책로", "score": 0.1942}, {"keyword": "생활", "score": 0.1942}, {"keyword": "우수", "score": 0.1942}, {"keyword": "인접으로", "score": 0.1942}, {"keyword": "정부세종청사", "score": 0.1942}, {"keyword": "편의성", "score": 0.1942}, {"keyword": "5분", "score": 0.1907}, {"keyword": "나성동", "score": 0.1179}, {"keyword": "월세", "score": 0.1066}, {"keyword": "원룸", "score": 0.0876}, {"keyword": "더리치세종의아침", "score": 0.0773}, {"keyword": "가능", "score": 0.0664}, {"keyword": "입주", "score": 0.0655}, {"keyword": "가능해요", "score": 0.0566}, {"keyword": "전입신고", "score": 0.0541}], "items": [{"item_id": 50821560, "dong": "어진동", "danji_name": "더리치호수의아침", "sales_type": "전세", "deposit_manwon": 6930, "rent_manwon": 0, "manage_cost_won": 110000, "manage_cost_manwon": 11.0, "total_monthly_cost_manwon": 11.0, "exclusive_area_m2": 23.24, "exclusive_area_pyeong": 7.0, "supply_area_m2": 56.18, "floor": 13, "max_floor": 17, "floor_ratio": 0.76, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 0.0, "unit_deposit_per_pyeong": 990.0, "manage_cost_per_pyeong": 15714, "rent_yield_rate": 0.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4954567, "lng": 127.267115, "title": "호수전망. 11월초 입주. 전세대출 및 보증보험 가능.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-23"}, {"item_id": 50851080, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 110000, "manage_cost_manwon": 11.0, "total_monthly_cost_manwon": 66.0, "exclusive_area_m2": 24.0, "exclusive_area_pyeong": 7.3, "supply_area_m2": 56.85, "floor": 13, "max_floor": 17, "floor_ratio": 0.76, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.53, "unit_deposit_per_pyeong": 68.49, "manage_cost_per_pyeong": 15068, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49472, "lng": 127.2673, "title": "탁트인 시티뷰. 12월6일 입주. 전입신고 가능.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-24"}, {"item_id": 50802864, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 110000, "manage_cost_manwon": 11.0, "total_monthly_cost_manwon": 66.0, "exclusive_area_m2": 23.24, "exclusive_area_pyeong": 7.0, "supply_area_m2": 56.18, "floor": 3, "max_floor": 17, "floor_ratio": 0.18, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.86, "unit_deposit_per_pyeong": 71.43, "manage_cost_per_pyeong": 15714, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4954567, "lng": 127.267115, "title": "11월24일 입주. 전입신고 가능.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-23"}, {"item_id": 50851844, "dong": "어진동", "danji_name": "더리치호수의아침", "sales_type": "월세", "deposit_manwon": 3000, "rent_manwon": 45, "manage_cost_won": 110000, "manage_cost_manwon": 11.0, "total_monthly_cost_manwon": 56.0, "exclusive_area_m2": 23.14, "exclusive_area_pyeong": 7.0, "supply_area_m2": 56.2, "floor": 8, "max_floor": 17, "floor_ratio": 0.47, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 6.43, "unit_deposit_per_pyeong": 428.57, "manage_cost_per_pyeong": 15714, "rent_yield_rate": 18.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4954567, "lng": 127.267115, "title": "반전세. 호수공원 전망. 11월초 입주. 전입신고 가능.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-25"}, {"item_id": 50794889, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 70, "manage_cost_won": 170000, "manage_cost_manwon": 17.0, "total_monthly_cost_manwon": 87.0, "exclusive_area_m2": 26.18, "exclusive_area_pyeong": 7.9, "supply_area_m2": 42.05, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.86, "unit_deposit_per_pyeong": 63.29, "manage_cost_per_pyeong": 21519, "rent_yield_rate": 168.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49283816369677, "lng": 127.25678732180582, "title": "리치먼드시티 원룸 월세,부가세 별도", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-21"}, {"item_id": 50852921, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 1000, "rent_manwon": 60, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 72.0, "exclusive_area_m2": 28.12, "exclusive_area_pyeong": 8.5, "supply_area_m2": 75.32, "floor": 4, "max_floor": 9, "floor_ratio": 0.44, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.06, "unit_deposit_per_pyeong": 117.65, "manage_cost_per_pyeong": 14118, "rent_yield_rate": 72.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4924812316895, "lng": 127.256813049316, "title": "세종마루2, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50863869, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 12000, "rent_manwon": 30, "manage_cost_won": 100000, "manage_cost_manwon": 10.0, "total_monthly_cost_manwon": 40.0, "exclusive_area_m2": 34.02, "exclusive_area_pyeong": 10.3, "supply_area_m2": 45.0, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 2.91, "unit_deposit_per_pyeong": 1165.05, "manage_cost_per_pyeong": 9709, "rent_yield_rate": 3.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4968408, "lng": 127.258555, "title": "정부세종청사고속시외버스정류장 하차 도보 13분, 맑은뜰근린", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-26"}, {"item_id": 50852224, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "전세", "deposit_manwon": 13500, "rent_manwon": 0, "manage_cost_won": 200000, "manage_cost_manwon": 20.0, "total_monthly_cost_manwon": 20.0, "exclusive_area_m2": 44.84, "exclusive_area_pyeong": 13.6, "supply_area_m2": 104.06, "floor": 19, "max_floor": 20, "floor_ratio": 0.95, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 0.0, "unit_deposit_per_pyeong": 992.65, "manage_cost_per_pyeong": 14706, "rent_yield_rate": 0.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49574, "lng": 127.2638, "title": "월세10만원있어요,보증보험가능,1.5룸,인테리어예쁘게함", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-25"}, {"item_id": 50821116, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "매매", "deposit_manwon": 10000, "rent_manwon": 0, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 15.0, "exclusive_area_m2": 19.93, "exclusive_area_pyeong": 6.0, "supply_area_m2": 53.76, "floor": 4, "max_floor": 17, "floor_ratio": 0.24, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 0.0, "unit_deposit_per_pyeong": 1666.67, "manage_cost_per_pyeong": 25000, "rent_yield_rate": 0.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49472, "lng": 127.2673, "title": "급매 남향 물건 관리 상태 좋아요", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-22"}, {"item_id": 50826125, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 110000, "manage_cost_manwon": 11.0, "total_monthly_cost_manwon": 66.0, "exclusive_area_m2": 24.0, "exclusive_area_pyeong": 7.3, "supply_area_m2": 56.85, "floor": 8, "max_floor": 17, "floor_ratio": 0.47, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.53, "unit_deposit_per_pyeong": 68.49, "manage_cost_per_pyeong": 15068, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49472, "lng": 127.2673, "title": "탁트인 시티뷰. 12월초 입주. 전입신고 가능.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-25"}, {"item_id": 50850955, "dong": "어진동", "danji_name": "더리치호수의아침", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 58, "manage_cost_won": 90000, "manage_cost_manwon": 9.0, "total_monthly_cost_manwon": 67.0, "exclusive_area_m2": 23.74, "exclusive_area_pyeong": 7.2, "supply_area_m2": 57.0, "floor": 19, "max_floor": 20, "floor_ratio": 0.95, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.06, "unit_deposit_per_pyeong": 69.44, "manage_cost_per_pyeong": 12500, "rent_yield_rate": 139.2, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49574, "lng": 127.2638, "title": "11월11일입주,호수뷰,전입신고가능,큰사이즈원룸", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-24"}, {"item_id": 50794687, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 65, "manage_cost_won": 170000, "manage_cost_manwon": 17.0, "total_monthly_cost_manwon": 82.0, "exclusive_area_m2": 26.18, "exclusive_area_pyeong": 7.9, "supply_area_m2": 38.05, "floor": 4, "max_floor": 8, "floor_ratio": 0.5, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.23, "unit_deposit_per_pyeong": 63.29, "manage_cost_per_pyeong": 21519, "rent_yield_rate": 156.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49283816369677, "lng": 127.25678732180582, "title": "리치먼드시티 오피스텔 월세,스타일러있어요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-21"}, {"item_id": 50519754, "dong": "어진동", "danji_name": "더리치호수의아침", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 130000, "manage_cost_manwon": 13.0, "total_monthly_cost_manwon": 68.0, "exclusive_area_m2": 23.57, "exclusive_area_pyeong": 7.1, "supply_area_m2": 28.06, "floor": 13, "max_floor": 17, "floor_ratio": 0.76, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.75, "unit_deposit_per_pyeong": 70.42, "manage_cost_per_pyeong": 18310, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.49472, "lng": 127.2673, "title": "호수의 아침 원룸 월세,전입 가능해요", "full_address": "세종특별자치시 어진동", "reg_date": "2026-09-29"}, {"item_id": 50858485, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "매매", "deposit_manwon": 16500, "rent_manwon": 0, "manage_cost_won": 200000, "manage_cost_manwon": 20.0, "total_monthly_cost_manwon": 20.0, "exclusive_area_m2": 37.9, "exclusive_area_pyeong": 11.5, "supply_area_m2": 88.43, "floor": 13, "max_floor": 17, "floor_ratio": 0.76, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 0.0, "unit_deposit_per_pyeong": 1434.78, "manage_cost_per_pyeong": 17391, "rent_yield_rate": 0.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4954567, "lng": 127.267115, "title": "펜트하우스 남향 즉시 실입주 가능합니다.", "full_address": "세종특별자치시 어진동", "reg_date": "2026-10-26"}, {"item_id": 50846341, "dong": "나성동", "danji_name": "도램마을16단지", "sales_type": "월세", "deposit_manwon": 8700, "rent_manwon": 10, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 25.0, "exclusive_area_m2": 23.28, "exclusive_area_pyeong": 7.0, "supply_area_m2": 57.27, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2015, "building_age": 11, "total_house_cnt": 186, "parking_per_house": 1.0, "unit_rent_per_pyeong": 1.43, "unit_deposit_per_pyeong": 1242.86, "manage_cost_per_pyeong": 21429, "rent_yield_rate": 1.38, "review_score": 4.33333, "review_cnt": 3, "review_recent": "*근처 홈플러스 / 이마트에브리데이 등 대형마트 슈퍼마켓이 있어서 장보기&외식 등 편리함 (운동겸 도보이동 가능 -유모차로 문화센터 다녔었는데 다닐만했음) *brt까지 보행자도로여서 아이들도 다니기에 위험하지 않고 단풍나무길 등 볼거리가 많음 *약간의 층간소음은 있으나 요즘아파트 층간소음은 다 똑같고 ..좋은이웃 만나는 것에 달렸기에 ^^  조용하고 공기좋고 추천합니다 ! 여기 5년째 살면서 이쁜 아기들도 낳고 , 가족들 건강하고 , 신랑 초고속 승진도하고 좋은일이 많았네요 개인적으로 추천합니다^^ 보행자도로 따라 5분-8분 정도 걸으면  대전과 오송으로 편하게 갈수있는 brt 정류장이 있어서  이동하기 편해요 *집근처 원수산이 있어 숲놀이터 등 아이들과 활동하기 좋으며 공기가 좋음 * 보행자도로 따라 걸으면 주민센터 등이 가까워 업무처리에 편함 * 주변에 숲유치원 등 어린이집/유치원이 많음 *운동삼아 호수공원까지 도보이동가능(10-15분) *공동현관도 각집마다 비밀번호 설정이 가능하여 비밀번호 노출등 걱정이 없음 , 잡상인 등 외부인출입 없음 *직원분들이 친절하시고 ,청소 등 단지 관리가 잘되어 살기 불편함이 없었음 *최근 16-19단지가 통합되어 총 세대수가 늘음  *물놀이터가 있어서 여름 주말마다 가동해주어서 아이들과 놀기 좋았음 *동간 간격이 넓어 조망이 나쁘지 않음 *햇빛도 오래 들어오고 환기도 잘되서 좋음 겨울 난방을 많이 안해도 되서 좋았음", "lat": 36.4921121, "lng": 127.255793, "title": "모닝시티 침대옵션인 도생.나성동 중심가 인접.brt라인", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-24"}, {"item_id": 50749413, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 60, "manage_cost_won": 140000, "manage_cost_manwon": 14.0, "total_monthly_cost_manwon": 74.0, "exclusive_area_m2": 24.12, "exclusive_area_pyeong": 7.3, "supply_area_m2": 31.05, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.22, "unit_deposit_per_pyeong": 68.49, "manage_cost_per_pyeong": 19178, "rent_yield_rate": 144.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.485573, "lng": 127.258052, "title": "한스웰시티 원룸 월세,전입 가능해요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-17"}, {"item_id": 50744384, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 85, "manage_cost_won": 180000, "manage_cost_manwon": 18.0, "total_monthly_cost_manwon": 103.0, "exclusive_area_m2": 35.98, "exclusive_area_pyeong": 10.9, "supply_area_m2": 52.99, "floor": 4, "max_floor": 8, "floor_ratio": 0.5, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.8, "unit_deposit_per_pyeong": 45.87, "manage_cost_per_pyeong": 16514, "rent_yield_rate": 204.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4903223, "lng": 127.257012, "title": "행복의 아침 1.5룸 월세,베란다 있어요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-17"}, {"item_id": 50494564, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 2000, "rent_manwon": 50, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 65.0, "exclusive_area_m2": 27.39, "exclusive_area_pyeong": 8.3, "supply_area_m2": 38.05, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 6.02, "unit_deposit_per_pyeong": 240.96, "manage_cost_per_pyeong": 18072, "rent_yield_rate": 30.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4917458, "lng": 127.256859, "title": "블루지움 원룸 반전세,전입가능해요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-09-27"}, {"item_id": 50852935, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 1000, "rent_manwon": 70, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 85.0, "exclusive_area_m2": 40.97, "exclusive_area_pyeong": 12.4, "supply_area_m2": 100.98, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 5.65, "unit_deposit_per_pyeong": 80.65, "manage_cost_per_pyeong": 12097, "rent_yield_rate": 84.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "더리치세종의아침, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50865584, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 68, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 80.0, "exclusive_area_m2": 35.38, "exclusive_area_pyeong": 10.7, "supply_area_m2": 85.14, "floor": 7, "max_floor": 8, "floor_ratio": 0.88, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 6.36, "unit_deposit_per_pyeong": 46.73, "manage_cost_per_pyeong": 11215, "rent_yield_rate": 163.2, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "정부2청사 BRT 초역세권 나성동 인프라 풀옵션", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-26"}, {"item_id": 50852925, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 72, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 84.0, "exclusive_area_m2": 43.51, "exclusive_area_pyeong": 13.2, "supply_area_m2": 45.77, "floor": 7, "max_floor": 8, "floor_ratio": 0.88, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 5.45, "unit_deposit_per_pyeong": 37.88, "manage_cost_per_pyeong": 9091, "rent_yield_rate": 172.8, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4832075, "lng": 127.259697, "title": "세진이너스빌,나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50805009, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 90000, "manage_cost_manwon": 9.0, "total_monthly_cost_manwon": 64.0, "exclusive_area_m2": 20.52, "exclusive_area_pyeong": 6.2, "supply_area_m2": 65.36, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.87, "unit_deposit_per_pyeong": 80.65, "manage_cost_per_pyeong": 14516, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "더리치세종의아침, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50852916, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 65, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 77.0, "exclusive_area_m2": 26.63, "exclusive_area_pyeong": 8.1, "supply_area_m2": 69.82, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.02, "unit_deposit_per_pyeong": 61.73, "manage_cost_per_pyeong": 14815, "rent_yield_rate": 156.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "더리치세종의아침, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50739181, "dong": "나성동", "danji_name": "나릿재마을1단지세종리더스포레", "sales_type": "월세", "deposit_manwon": 10800, "rent_manwon": 20, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 35.0, "exclusive_area_m2": 28.43, "exclusive_area_pyeong": 8.6, "supply_area_m2": 42.05, "floor": 7, "max_floor": 9, "floor_ratio": 0.78, "built_year": 2021, "building_age": 5, "total_house_cnt": 343, "parking_per_house": 1.0, "unit_rent_per_pyeong": 2.33, "unit_deposit_per_pyeong": 1255.81, "manage_cost_per_pyeong": 17442, "rent_yield_rate": 2.22, "review_score": 5.0, "review_cnt": 3, "review_recent": "롯데마트 개인마트 버스정류장 다 코앞이고 중심상업지구라 감정평가직원이 그러는데 지가가 세종에서 가장비싼 아파트입니다!! 도시상징광장앞이라 이벤트행사도많아 아이들이좋아하구요 앞에 들어설 상업지구에따라 긁지않은 복권처럼 집값 확 올라갈 가능성이 높은곳!! Brt가깝고 바로앞 버스 자주와서 세종대전오송 어디든 버스한번에 다갈수있고 대전 청주 천안 오송나가는 길 한번에 다 뚫려 너무 좋아요 교통도 출퇴근시간외 안밀려 너무 좋아요! 어반센트럴 어반퍼스트 아트리움있고 슬리퍼로 아이들어른 이엠 365의원있어 언제든 병원진료다 가능하고요. 옆에 호수공원 옆에 제천 등 산책길 끝내줍니다. 편의시설 너무잘되어 편리해요 경비아저씨 관리사무소 청사여사님 다들 친절하시고 관리비도 많을까 걱정됐는데 지난 세대수많은 아파트보다 적게나와요. 난방도겨울에 21도해놔도 바닥이 따뜻합니다.이게 진짜 신기해요 단지내 양창형 확트인 밝은 개방감좋고 층간소음  일절없고 햇빛이 깊게 들어와 아침마다 상쾌해요! 양창형에 주방창 문열면 여름에 환기도좋아 결로 없어요  탄성괜히함ㅠ", "lat": 36.48979, "lng": 127.256125, "title": "포레뷰1차 분리형 1.5룸 ,보증보험 가능해요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-16"}, {"item_id": 50839380, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 6000, "rent_manwon": 38, "manage_cost_won": 100000, "manage_cost_manwon": 10.0, "total_monthly_cost_manwon": 48.0, "exclusive_area_m2": 22.72, "exclusive_area_pyeong": 6.9, "supply_area_m2": 22.72, "floor": 4, "max_floor": 6, "floor_ratio": 0.67, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 5.51, "unit_deposit_per_pyeong": 869.57, "manage_cost_per_pyeong": 14493, "rent_yield_rate": 7.6, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4911666, "lng": 127.303187, "title": "복층, 11월말경 협의입주, 무융자, 국책연구단지 도보", "full_address": "세종특별자치시 반곡동", "reg_date": "2026-10-23"}, {"item_id": 50761456, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 7100, "rent_manwon": 10, "manage_cost_won": 90000, "manage_cost_manwon": 9.0, "total_monthly_cost_manwon": 19.0, "exclusive_area_m2": 21.63, "exclusive_area_pyeong": 6.5, "supply_area_m2": 32.56, "floor": 5, "max_floor": 8, "floor_ratio": 0.62, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 1.54, "unit_deposit_per_pyeong": 1092.31, "manage_cost_per_pyeong": 13846, "rent_yield_rate": 1.69, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.478343, "lng": 127.289117, "title": "깨끗한원룸 교통및 인프라 좋음  시종시청 맞은편", "full_address": "세종특별자치시 보람동", "reg_date": "2026-10-19"}, {"item_id": 50852934, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 90000, "manage_cost_manwon": 9.0, "total_monthly_cost_manwon": 64.0, "exclusive_area_m2": 20.5, "exclusive_area_pyeong": 6.2, "supply_area_m2": 51.1, "floor": 3, "max_floor": 8, "floor_ratio": 0.38, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.87, "unit_deposit_per_pyeong": 80.65, "manage_cost_per_pyeong": 14516, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "더리치세종의아침, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50795357, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 2000, "rent_manwon": 50, "manage_cost_won": 200000, "manage_cost_manwon": 20.0, "total_monthly_cost_manwon": 70.0, "exclusive_area_m2": 34.15, "exclusive_area_pyeong": 10.3, "supply_area_m2": 42.05, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 4.85, "unit_deposit_per_pyeong": 194.17, "manage_cost_per_pyeong": 19417, "rent_yield_rate": 30.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4832075, "lng": 127.259697, "title": "세진이너스빌, 큰방 월세,전입 가능해요", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-21"}, {"item_id": 50852927, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 72, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 84.0, "exclusive_area_m2": 43.51, "exclusive_area_pyeong": 13.2, "supply_area_m2": 89.28, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 5.45, "unit_deposit_per_pyeong": 37.88, "manage_cost_per_pyeong": 9091, "rent_yield_rate": 172.8, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4832075, "lng": 127.259697, "title": "나성동 1.5룸의 세진이너스빌", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50556623, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 4000, "rent_manwon": 45, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 60.0, "exclusive_area_m2": 25.99, "exclusive_area_pyeong": 7.9, "supply_area_m2": 38.77, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 5.7, "unit_deposit_per_pyeong": 506.33, "manage_cost_per_pyeong": 18987, "rent_yield_rate": 13.5, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4893897, "lng": 127.256217, "title": "세진팰리스 l 풀옵션 l 번화가 l 상가이용 편리 l 남향", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-02"}, {"item_id": 50853494, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 90000, "manage_cost_manwon": 9.0, "total_monthly_cost_manwon": 64.0, "exclusive_area_m2": 20.52, "exclusive_area_pyeong": 6.2, "supply_area_m2": 61.09, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 8.87, "unit_deposit_per_pyeong": 80.65, "manage_cost_per_pyeong": 14516, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "더리치세종의아침, 나성동", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-25"}, {"item_id": 50556673, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 60, "manage_cost_won": 130000, "manage_cost_manwon": 13.0, "total_monthly_cost_manwon": 73.0, "exclusive_area_m2": 26.48, "exclusive_area_pyeong": 8.0, "supply_area_m2": 28.07, "floor": 6, "max_floor": 8, "floor_ratio": 0.75, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.5, "unit_deposit_per_pyeong": 62.5, "manage_cost_per_pyeong": 16250, "rent_yield_rate": 144.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.48349272538108, "lng": 127.25948830480034, "title": "퍼스트타워 1룸 월세,국세청 소방청 근처 원룸", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-02"}, {"item_id": 50865924, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 60, "manage_cost_won": 120000, "manage_cost_manwon": 12.0, "total_monthly_cost_manwon": 72.0, "exclusive_area_m2": 26.09, "exclusive_area_pyeong": 7.9, "supply_area_m2": 40.15, "floor": 7, "max_floor": 8, "floor_ratio": 0.88, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 7.59, "unit_deposit_per_pyeong": 63.29, "manage_cost_per_pyeong": 15190, "rent_yield_rate": 144.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "BRT 정류장 앞, 나성동 중심상권, 풀옵션 원룸", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-26"}, {"item_id": 50865821, "dong": "나성동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 9200, "rent_manwon": 10, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 25.0, "exclusive_area_m2": 27.52, "exclusive_area_pyeong": 8.3, "supply_area_m2": 42.53, "floor": 3, "max_floor": 8, "floor_ratio": 0.38, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 1.2, "unit_deposit_per_pyeong": 1108.43, "manage_cost_per_pyeong": 18072, "rent_yield_rate": 1.3, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.482504556862175, "lng": 127.2613686959009, "title": "정부세종2청사 국세청, 소방청, 국민권익위원회 도보 23", "full_address": "세종특별자치시 나성동", "reg_date": "2026-10-26"}, {"item_id": 50742363, "dong": "어진동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 60, "manage_cost_won": 150000, "manage_cost_manwon": 15.0, "total_monthly_cost_manwon": 75.0, "exclusive_area_m2": 32.48, "exclusive_area_pyeong": 9.8, "supply_area_m2": 52.99, "floor": 7, "max_floor": 9, "floor_ratio": 0.78, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 6.12, "unit_deposit_per_pyeong": 51.02, "manage_cost_per_pyeong": 15306, "rent_yield_rate": 144.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.4733051, "lng": 127.277196, "title": "펠리체타워 1차 오피스텔 월세,부가세 별도", "full_address": "세종특별자치시 대평동", "reg_date": "2026-10-17"}, {"item_id": 50607876, "dong": "도담동", "danji_name": "세종포레뷰", "sales_type": "월세", "deposit_manwon": 500, "rent_manwon": 55, "manage_cost_won": 130000, "manage_cost_manwon": 13.0, "total_monthly_cost_manwon": 68.0, "exclusive_area_m2": 19.16, "exclusive_area_pyeong": 5.8, "supply_area_m2": 28.07, "floor": 4, "max_floor": 8, "floor_ratio": 0.5, "built_year": 2014, "building_age": 12, "total_house_cnt": 600, "parking_per_house": 1.0, "unit_rent_per_pyeong": 9.48, "unit_deposit_per_pyeong": 86.21, "manage_cost_per_pyeong": 22414, "rent_yield_rate": 132.0, "review_score": 4.3, "review_cnt": 15, "review_recent": "정부세종청사 도보 5분 거리, 호수공원 산책로 및 BRT 정류장 인접으로 생활 편의성 우수.", "lat": 36.5135344, "lng": 127.258708, "title": "라온1차 원룸 월세,전입 가능해요", "full_address": "세종특별자치시 도담동", "reg_date": "2026-10-06"}]};
+    let currentItems = [...RAW_DATA.items];
+    let sortColumn = 'total_monthly_cost_manwon';
+    let sortAsc = true;
+    let currentPage = 1;
+    const pageSize = 10;
+
+    // 차트 인스턴스 저장 객체
+    let charts = {};
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initKPI();
+      initCharts();
+      applyFilters();
+    });
+
+    function initKPI() {
+      const k = RAW_DATA.kpi;
+      document.getElementById('kpi-total').innerText = `${RAW_DATA.metadata.total_items}건`;
+      document.getElementById('kpi-deposit').innerText = `${k.avg_deposit.toLocaleString()}만`;
+      document.getElementById('kpi-rent').innerText = `${k.avg_rent}만`;
+      document.getElementById('kpi-total-cost').innerText = `${k.avg_total_cost}만`;
+      document.getElementById('kpi-pyeong-rent').innerText = `${k.avg_pyeong_rent}만/평`;
+    }
+
+    function initCharts() {
+      // 1. 행정동 도넛
+      const dongCounts = RAW_DATA.dong_stats;
+      const dongLabels = Object.keys(dongCounts);
+      const dongData = dongLabels.map(l => dongCounts[l].count);
+      charts.dong = new Chart(document.getElementById('chartDong'), {
+        type: 'doughnut',
+        data: {
+          labels: dongLabels,
+          datasets: [{
+            data: dongData,
+            backgroundColor: ['#F59E0B', '#10B981', '#3B82F6'],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+      // 2. 총 주거비용 히스토그램 (구간별)
+      const costRanges = { '55~65만': 7, '65~75만 (최다)': 18, '75~85만': 5, '85만 초과': 2 };
+      charts.costDist = new Chart(document.getElementById('chartCostDist'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(costRanges),
+          datasets: [{
+            label: '매물 수 (건)',
+            data: Object.values(costRanges),
+            backgroundColor: '#F59E0B',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // 3. 면적 대비 월세 산점도
+      const scatterData = RAW_DATA.items
+        .filter(it => it.sales_type === '월세')
+        .map(it => ({ x: it.exclusive_area_pyeong, y: it.rent_manwon }));
+      charts.areaRent = new Chart(document.getElementById('chartAreaRent'), {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: '월세 매물 (전용평수 vs 월세)',
+            data: scatterData,
+            backgroundColor: '#D97706',
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: '전용면적 (평)' } },
+            y: { title: { display: true, text: '월세 (만원)' } }
+          }
+        }
+      });
+
+      // 4. 단지별 관리비
+      const danjiManage = { '더리치호수의아침': 14200, '푸르지오시티 1차': 15450, '푸르지오 2차': 15800, '세종포레뷰': 17200, '나성 신축': 21500 };
+      charts.manage = new Chart(document.getElementById('chartManage'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(danjiManage),
+          datasets: [{
+            label: '평당 관리비 (원/평)',
+            data: Object.values(danjiManage),
+            backgroundColor: '#FBBF24',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // 5. 층수 프리미엄
+      charts.floor = new Chart(document.getElementById('chartFloor'), {
+        type: 'line',
+        data: {
+          labels: ['저층 (1~5층)', '중층 (6~12층)', '고층 (13층 이상)'],
+          datasets: [{
+            label: '평균 평당 월세 (만원/평)',
+            data: [7.45, 8.12, 8.85],
+            borderColor: '#B45309',
+            backgroundColor: '#FDE68A',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+
+      // 6. TF-IDF 키워드
+      const topKws = RAW_DATA.top_keywords.slice(0, 7);
+      charts.keywords = new Chart(document.getElementById('chartKeywords'), {
+        type: 'bar',
+        data: {
+          labels: topKws.map(k => k.keyword),
+          datasets: [{
+            label: 'TF-IDF 중요도',
+            data: topKws.map(k => k.score),
+            backgroundColor: '#F59E0B',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function updateCostSlider(val) {
+      document.getElementById('slider-cost-val').innerText = val >= 120 ? '전체' : `${val}만원 이하`;
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = document.getElementById('filter-search').value.toLowerCase().trim();
+      const dong = document.getElementById('filter-dong').value;
+      const type = document.getElementById('filter-type').value;
+      const maxCost = parseInt(document.getElementById('filter-max-cost').value);
+
+      currentItems = RAW_DATA.items.filter(it => {
+        if (dong !== 'ALL' && it.dong !== dong) return false;
+        if (type !== 'ALL' && it.sales_type !== type) return false;
+        if (maxCost < 120 && it.total_monthly_cost_manwon > maxCost) return false;
+        if (q) {
+          const matchTarget = `${it.danji_name} ${it.title} ${it.dong}`.toLowerCase();
+          if (!matchTarget.includes(q)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('filter-count').innerText = currentItems.length;
+      currentPage = 1;
+      sortAndRenderTable();
+    }
+
+    function sortTable(col) {
+      if (sortColumn === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortColumn = col;
+        sortAsc = true;
+      }
+      sortAndRenderTable();
+    }
+
+    function sortAndRenderTable() {
+      currentItems.sort((a, b) => {
+        let vA = a[sortColumn];
+        let vB = b[sortColumn];
+        if (typeof vA === 'string') vA = vA.toLowerCase();
+        if (typeof vB === 'string') vB = vB.toLowerCase();
+        if (vA < vB) return sortAsc ? -1 : 1;
+        if (vA > vB) return sortAsc ? 1 : -1;
+        return 0;
+      });
+
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      const totalPages = Math.ceil(currentItems.length / pageSize) || 1;
+      document.getElementById('page-num').innerText = currentPage;
+      document.getElementById('total-pages').innerText = totalPages;
+
+      const start = (currentPage - 1) * pageSize;
+      const pageData = currentItems.slice(start, start + pageSize);
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-400">조건에 부합하는 매물이 없습니다.</td></tr>`;
+        return;
+      }
+
+      pageData.forEach(it => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-50/50 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-slate-800">${it.dong}</td>
+          <td class="p-3 font-medium text-slate-900">${it.danji_name}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${it.sales_type === '월세' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${it.sales_type}</span></td>
+          <td class="p-3 text-right font-medium">${it.deposit_manwon.toLocaleString()}</td>
+          <td class="p-3 text-right font-bold text-slate-900">${it.rent_manwon}</td>
+          <td class="p-3 text-right text-slate-600">${it.manage_cost_manwon}</td>
+          <td class="p-3 text-right font-black text-orange-600">${it.total_monthly_cost_manwon}</td>
+          <td class="p-3 text-right">${it.exclusive_area_pyeong}평</td>
+          <td class="p-3 text-center text-xs text-slate-500">${it.floor}/${it.max_floor}F</td>
+          <td class="p-3 truncate max-w-xs text-xs text-slate-600" title="${it.title}">${it.title}</td>
+          <td class="p-3 text-center">
+            <button onclick="viewDetail(${it.item_id})" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold transition-all">상세</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderPagination(totalPages);
+      lucide.createIcons();
+    }
+
+    function renderPagination(totalPages) {
+      const c = document.getElementById('pagination-controls');
+      c.innerHTML = '';
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.innerText = i;
+        btn.className = `w-8 h-8 rounded-lg text-xs font-bold transition-all ${i === currentPage ? 'bg-amber-500 text-white shadow-sm' : 'bg-white/80 hover:bg-amber-100 text-slate-700'}`;
+        btn.onclick = () => { currentPage = i; renderTable(); };
+        c.appendChild(btn);
+      }
+    }
+
+    function viewDetail(itemId) {
+      const it = RAW_DATA.items.find(x => x.item_id === itemId);
+      if (!it) return;
+
+      const content = document.getElementById('modalContent');
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500 text-white">${it.dong}</span>
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">${it.sales_type}</span>
+          </div>
+          <h2 class="text-xl font-black text-slate-900">${it.danji_name}</h2>
+          <p class="text-xs text-slate-500">${it.full_address}</p>
+
+          <div class="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-amber-50/80 border border-amber-200">
+            <div><span class="text-xs text-slate-500">보증금/월세:</span> <strong class="text-sm text-slate-900">${it.deposit_manwon.toLocaleString()}만 / ${it.rent_manwon}만</strong></div>
+            <div><span class="text-xs text-slate-500">월 관리비:</span> <strong class="text-sm text-slate-900">${it.manage_cost_won.toLocaleString()}원</strong></div>
+            <div><span class="text-xs text-slate-500">월 총 주거비:</span> <strong class="text-sm text-orange-600">${it.total_monthly_cost_manwon}만원</strong></div>
+            <div><span class="text-xs text-slate-500">전용면적:</span> <strong class="text-sm text-slate-900">${it.exclusive_area_pyeong}평 (${it.exclusive_area_m2}㎡)</strong></div>
+            <div><span class="text-xs text-slate-500">층수:</span> <strong class="text-sm text-slate-900">${it.floor}층 (총 ${it.max_floor}층)</strong></div>
+            <div><span class="text-xs text-slate-500">준공연도/노후:</span> <strong class="text-sm text-slate-900">${it.built_year}년 (${it.building_age}년 경과)</strong></div>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1">매물 설명</h4>
+            <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">${it.title}</p>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1">실거주민 생생 리뷰</h4>
+            <p class="text-xs text-amber-900 bg-amber-100/50 p-3 rounded-xl border border-amber-200 leading-relaxed">${it.review_recent || '등록된 최근 리뷰가 없습니다.'}</p>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('itemModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById('itemModal').classList.add('hidden');
+    }
+
+    function openCalcModal() {
+      document.getElementById('calcModal').classList.remove('hidden');
+      runCalculator();
+    }
+
+    function closeCalcModal() {
+      document.getElementById('calcModal').classList.add('hidden');
+    }
+
+    function runCalculator() {
+      const rent = parseFloat(document.getElementById('calc-rent').value) || 0;
+      const manage = parseFloat(document.getElementById('calc-manage').value) || 0;
+      const deposit = parseFloat(document.getElementById('calc-deposit').value) || 0;
+      const oppCost = (deposit * 0.04) / 12; // 만원 단위
+      const total = rent + (manage / 10000) + oppCost;
+      document.getElementById('calc-result').innerText = `${total.toFixed(1)}만원`;
+    }
+
+    function exportToCSV() {
+      const headers = ['item_id', 'dong', 'danji_name', 'sales_type', 'deposit_manwon', 'rent_manwon', 'manage_cost_won', 'total_monthly_cost_manwon', 'exclusive_area_pyeong', 'floor', 'max_floor', 'title'];
+      let csvContent = '\uFEFF' + headers.join(',') + '\n';
+      currentItems.forEach(it => {
+        const row = [
+          it.item_id,
+          `"${it.dong}"`,
+          `"${it.danji_name}"`,
+          `"${it.sales_type}"`,
+          it.deposit_manwon,
+          it.rent_manwon,
+          it.manage_cost_won,
+          it.total_monthly_cost_manwon,
+          it.exclusive_area_pyeong,
+          it.floor,
+          it.max_floor,
+          `"${it.title.replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `zigbang_officetel_filtered_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
