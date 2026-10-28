@@ -64,10 +64,16 @@ DATACRAWLING/
 │   └── src/                       # 예스24 스크래퍼 및 Marp 발표 자료 생성기
 └── zigbang/                       # 직방 세종 정부청사 오피스텔 실거주 가성비 분석 프로젝트
     ├── dashboard.html             # 독립형 앰버 글래스모피즘 웹 대시보드 (주거비 계산기 탑재)
-    ├── docs/                      # API 명세서, 수집 기획서, 구현 설계서, 워크스루
+    ├── docs/                      # API 명세서, 수집 기획서, 구현 설계서, 서브에이전트 아티팩트
+    │   ├── subagents/             # 4종 서브에이전트(빌더 2종 + 리뷰어 2종) 정의 명세서
+    │   └── subagent_workflow_and_audits.md # 서브에이전트 협업 파이프라인 및 정밀 감사 보고서
     ├── images/                    # 10종 고해상도 실거주/가성비 EDA 시각화 차트 (PNG)
-    ├── reports/                   # 20년차 데이터 분석가 종합 리포트 (Markdown & PDF)
-    └── src/                       # Gateway 스크래퍼, 심층 EDA, 대시보드 번들러, PDF 변환기
+    ├── reports/                   # 20년차 데이터 분석가 종합 리포트 (Markdown, PDF, DOCX, PPTX)
+    │   ├── EDA_Report.md          # 20년차 데이터 분석가 마크다운 심층 분석 리포트
+    │   ├── EDA_Report.pdf         # Edge 고해상도 인쇄 CSS 기반 A4 배포용 PDF
+    │   ├── Sejong_Officetel_Report.docx       # OpenXML 네이티브 스타일링 전문 Word 종합 보고서
+    │   └── Sejong_Officetel_Presentation.pptx # 16:9 와이드스크린 13장 슬라이드 & 발표 대본 완비본
+    └── src/                       # Gateway 스크래퍼, 심층 EDA, 대시보드 번들러, DOCX/PPTX 빌더
 ```
 
 ---
@@ -97,6 +103,10 @@ DATACRAWLING/
 - **REST Gateway API 역공학 & Playwright 수집**: 직방 지도 내부 통신 규격을 역공학하여 세종청사 생활권(어진동·나성동·도담동) 28개 단지 및 실매물 36건 전수 수집
 - **실거주 정주 여건 & 가성비 심층 EDA (10개 차트)**: 월세 중심 시장(88.9%), 월 총 실주거비용(평균 71.2만원), 전용 평당 관리비(1.6만원) 착시 효과, 층수/호수공원 조망 프리미엄(+18.8%), 노후도 감가상각 둔화 실증 분석
 - **직방 앰버 골드 글래스모피즘 웹 대시보드**: 단일 HTML 파일로 동작하며 '월 총 주거비용(월세+관리비+금융비용) 계산기', Chart.js 6대 인터랙티브 차트, 실시간 검색/정렬/필터링 및 CSV 내보내기 탑재
+- **서브에이전트 4종 협업 기반 엔터프라이즈 산출물 제작 & 정밀 감사**:
+  - `docx-builder` & `docx-reviewer`: OpenXML 네이티브 스타일링 기반 Word 종합 보고서([Sejong_Officetel_Report.docx](zigbang/reports/Sejong_Officetel_Report.docx), 4,500자 비즈니스 제언 및 10개 차트 전수 수록)
+  - `pptx-builder` & `pptx-reviewer`: 16:9 와이드스크린 고품질 발표 슬라이드([Sejong_Officetel_Presentation.pptx](zigbang/reports/Sejong_Officetel_Presentation.pptx), Bento Grid UI, 13장 전수 평균 350자 발표 대본 완비)
+  - 서브에이전트 명세 및 감사 보고서 원문은 [zigbang/docs/subagent_workflow_and_audits.md](zigbang/docs/subagent_workflow_and_audits.md)에 영구 보존
 
 ---
 
