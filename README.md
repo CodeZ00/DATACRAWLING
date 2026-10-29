@@ -10,15 +10,17 @@
 
 ---
 
-## 🌐 인터랙티브 웹앱 라이브 대시보드
+## 🌐 인터랙티브 웹앱 라이브 대시보드 (GitHub Pages)
 
-교보문고 IT 베스트셀러 전수 데이터를 브라우저에서 실시간으로 시각화하고 탐색할 수 있는 웹 애플리케이션입니다.
+오창읍 원룸·빌라 월세 시장 및 교보문고 베스트셀러 전수 데이터를 웹 브라우저에서 실시간으로 시각화하고 탐색할 수 있는 라이브 웹 애플리케이션입니다.
 
-👉 **[라이브 대시보드 바로가기 (클릭)](https://codez00.github.io/DATACRAWLING/)**
+👉 **[오창읍 원룸·빌라 라이브 대시보드 바로가기 (클릭)](https://codez00.github.io/DATACRAWLING/)**
 
 ```
 https://codez00.github.io/DATACRAWLING/
 ```
+*(GitHub 저장소 Settings > Pages에서 Source를 `Deploy from a branch` (main / root)로 지정 시 즉시 서비스됩니다)*
+
 
 ### 🎨 대시보드 주요 특징
 - **화이트 톤 글래스모피즘(White Glassmorphism)**: 은은한 파스텔 앰비언트 글로우 배경과 프로스티드 글래스 패널의 감각적인 UI
@@ -99,14 +101,21 @@ DATACRAWLING/
 - **지리/상권 심층 EDA (10개 차트)**: 서울 구별 밀집도, 드라이브스루(DT) 권역 비교, 개점 연도별 확장 추이, 텍스트 마이닝(TF-IDF) 등 20년차 분석가 수준의 비즈니스 리포트 도출
 - **에메랄드 글래스모피즘 웹 대시보드**: 독립형 단일 HTML 파일로 전국 매장 실시간 검색, 시도/유형 필터링, Chart.js 동적 시각화 및 CSV 즉시 내보내기 지원
 
-### 4. 직방 (zigbang) - 세종 정부청사 오피스텔 가성비 분석
-- **REST Gateway API 역공학 & Playwright 수집**: 직방 지도 내부 통신 규격을 역공학하여 세종청사 생활권(어진동·나성동·도담동) 28개 단지 및 실매물 36건 전수 수집
-- **실거주 정주 여건 & 가성비 심층 EDA (10개 차트)**: 월세 중심 시장(88.9%), 월 총 실주거비용(평균 71.2만원), 전용 평당 관리비(1.6만원) 착시 효과, 층수/호수공원 조망 프리미엄(+18.8%), 노후도 감가상각 둔화 실증 분석
-- **직방 앰버 골드 글래스모피즘 웹 대시보드**: 단일 HTML 파일로 동작하며 '월 총 주거비용(월세+관리비+금융비용) 계산기', Chart.js 6대 인터랙티브 차트, 실시간 검색/정렬/필터링 및 CSV 내보내기 탑재
-- **서브에이전트 4종 협업 기반 엔터프라이즈 산출물 제작 & 정밀 감사**:
-  - `docx-builder` & `docx-reviewer`: OpenXML 네이티브 스타일링 기반 Word 종합 보고서([Sejong_Officetel_Report.docx](zigbang/reports/Sejong_Officetel_Report.docx), 4,500자 비즈니스 제언 및 10개 차트 전수 수록)
-  - `pptx-builder` & `pptx-reviewer`: 16:9 와이드스크린 고품질 발표 슬라이드([Sejong_Officetel_Presentation.pptx](zigbang/reports/Sejong_Officetel_Presentation.pptx), Bento Grid UI, 13장 전수 평균 350자 발표 대본 완비)
-  - 서브에이전트 명세 및 감사 보고서 원문은 [zigbang/docs/subagent_workflow_and_audits.md](zigbang/docs/subagent_workflow_and_audits.md)에 영구 보존
+### 5. 직방 (zigbang) - 충북 청주시 청원구 오창읍 원룸·빌라 월세 시장 데이터 인텔리전스
+- **전수 수집 및 무결성 검증**: 오창읍 전역(양청리, 구룡리, 주성리 등) 실매물 603건 전수 수집 (결측률 0.0%)
+- **20년차 데이터 분석가 심층 EDA (11개 차트)**: 
+  - 가성비 앵커링(중위 36만 원) 및 관리비 전가(평균 10.4만 원, 순수월세의 25.5%) 규명
+  - 단독 원룸(72%) 과점 속 투룸(평당 4.0만 원)의 공간 가성비 역전 현상 규명
+  - 청년 1인 가구 RIR(소득 대비 주거비율 13~16%) 및 풀옵션 실질 가치(150만 원 순이득) 분석
+  - 특정 번지 **`양청택지로 124-32` (은하빌라B)** 정밀 감정평가(반경 300m 평당 3.8만 원, 적정 임대료 제안)
+- **독립형 화이트 글래스모피즘 웹 대시보드 (`index.html`)**:
+  - Chart.js 6대 반응형 차트, 실시간 다중 조건 필터, 매물 상세 모달 및 UTF-8-SIG CSV 내보내기 탑재
+  - GitHub Pages로 즉시 웹페이지 서비스 제공: [`https://codez00.github.io/DATACRAWLING/`](https://codez00.github.io/DATACRAWLING/)
+- **엔터프라이즈 산출물**:
+  - 공식 Word 보고서: [`Ochang_Villa_Rent_Report.docx`](zigbang/reports/Ochang_Villa_Rent_Report.docx) (6개 표, 11개 차트 인라인 수록)
+  - 16:9 와이드 PPTX 프레젠테이션: [`Ochang_Villa_Rent_Presentation.pptx`](zigbang/reports/Ochang_Villa_Rent_Presentation.pptx) (16장 Bento Grid, 전 슬라이드 200자+ 대본 완비)
+  - 출판물급 고해상도 PDF: [`EDA_Report.pdf`](zigbang/reports/EDA_Report.pdf) (A4 15페이지 세로 인쇄 규격)
+
 
 ---
 
