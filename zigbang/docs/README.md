@@ -1,31 +1,33 @@
-# 📚 직방 세종 오피스텔 프로젝트 공식 문서 보관소 (Documentation Hub)
+# 📚 직방 부동산 데이터 인텔리전스 프로젝트 문서 보관소 (Documentation Hub)
 
-본 디렉터리는 세종특별자치시 정부청사 생활권(어진동·나성동·도담동) 오피스텔 데이터 수집, 심층 EDA, 비즈니스 리포트 및 웹 대시보드 구축과 관련된 모든 공식 문서를 영구 보존하는 아카이브입니다.
+본 디렉터리는 직방(Zigbang) 플랫폼 기반 부동산 데이터 수집, 심층 EDA, 비즈니스 리포트 및 웹 대시보드 구축과 관련된 모든 공식 기술 문서 및 산출물 아티팩트를 영구 보존하는 아카이브입니다.
 
 ---
 
-## 📑 보관 문서 목차
+## 📑 [최신 프로젝트] 충북 청주시 청원구 오창읍 원룸·빌라 월세 파이프라인 (2026-10-29)
 
+### 1. 공식 비즈니스 보고서 & 프레젠테이션 (.docx / .pptx)
+| 파일명 | 산출물 구분 | 주요 내용 요약 |
+| :--- | :--- | :--- |
+| **[../reports/Ochang_Villa_Rent_Report.docx](../reports/Ochang_Villa_Rent_Report.docx)** | **공식 Word 종합 보고서 (.docx)** | 603개 실매물 데이터, 11대 시각화 차트 및 4,000자 이상 심층 비즈니스 제언 수록 프리미엄 리포트 |
+| **[../reports/Ochang_Villa_Rent_Presentation.pptx](../reports/Ochang_Villa_Rent_Presentation.pptx)** | **공식 PPTX 발표 슬라이드 (.pptx)** | 16:9 와이드스크린 규격, Bento Grid 모던 디자인 시스템, 14장 전 슬라이드 200자 이상 발표자 노트 완비 |
+| **[../reports/EDA_Report.md](../reports/EDA_Report.md)** | **마크다운 종합 분석 리포트** | 20년차 수석 데이터 분석가 작성 2,000자 이상 비즈니스 인사이트 및 11종 차트 전문 |
+
+### 2. 인터랙티브 웹 대시보드
+| 파일명 | 산출물 구분 | 주요 내용 요약 |
+| :--- | :--- | :--- |
+| **[../dashboard.html](../../dashboard.html)** (또는 `../dashboard.html`) | **인터랙티브 웹 대시보드** | 더블클릭(`file://`) 즉시 실행, 화이트 글래스모피즘 테마, Leaflet.js 오창읍 매물 지도, 6대 핵심 차트, 다중 필터 |
+
+### 3. 프로젝트 기술 문서 & 데이터셋
 | 파일명 | 문서 구분 | 주요 내용 요약 |
 | :--- | :--- | :--- |
-| **[api_specification.md](api_specification.md)** | 기술 명세서 | 직방 Gateway REST API 엔드포인트, 헤더, 페이로드 및 응답 JSON 스키마 |
-| **[collection_plan.md](collection_plan.md)** | 수집 기획서 | 어진동·나성동·도담동 공간적 범위 설정 및 무결성 기준 |
-| **[implementation_plan.md](implementation_plan.md)** | 구현 설계서 | 스크래퍼, 10종 차트 심층 EDA, 앰버 글래스모피즘 대시보드 엔드투엔드 설계서 |
-| **[walkthrough.md](walkthrough.md)** | 결과 보고서 | 전체 파이프라인 수행 결과, 산출물 목록 및 검증 Walkthrough |
-| **[subagent_workflow_and_audits.md](subagent_workflow_and_audits.md)** | 서브에이전트 감사서 | 4종 서브에이전트(빌더 2종+리뷰어 2종) 협업 워크플로우 및 정밀 감사 보고서 전문 |
-| **[subagents/docx-builder.md](subagents/docx-builder.md)** | 에이전트 명세서 | Word 보고서 자동 생성 서브에이전트 역할 및 시스템 프롬프트 명세 |
-| **[subagents/pptx-builder.md](subagents/pptx-builder.md)** | 에이전트 명세서 | 16:9 와이드 PPTX 슬라이드 생성 서브에이전트 역할 및 시스템 프롬프트 명세 |
-| **[subagents/docx-reviewer.md](subagents/docx-reviewer.md)** | 에이전트 명세서 | Word 보고서 품질 감사 및 무결성 검증 서브에이전트 역할 명세 |
-| **[subagents/pptx-reviewer.md](subagents/pptx-reviewer.md)** | 에이전트 명세서 | PPTX 디자인 및 발표 대본 검증 서브에이전트 역할 명세 |
-| **[../reports/Sejong_Officetel_Report.docx](../reports/Sejong_Officetel_Report.docx)** | 공식 Word 보고서 | 10대 차트 전수 수록 및 4,500자 이상 비즈니스 제언 포함 완성본 (.docx) |
-| **[../reports/Sejong_Officetel_Presentation.pptx](../reports/Sejong_Officetel_Presentation.pptx)** | 공식 발표 자료 | 16:9 와이드 13장 슬라이드 및 13장 전수 발표자 노트 완비본 (.pptx) |
-| **[../reports/EDA_Report.md](../reports/EDA_Report.md)** | 분석 보고서 | 10대 핵심 차트 해석 및 2,000자 이상 실거주/가성비 비즈니스 종합 리포트 |
-| **[../reports/EDA_Report.pdf](../reports/EDA_Report.pdf)** | 공식 인쇄본 | Print-CSS 기반 고해상도 A4 PDF 인쇄용 보고서 |
+| **[ochang_collection_plan.md](ochang_collection_plan.md)** | 기술 명세서 / 수집 계획서 | 직방 Gateway REST API(POST /items/list 15개 배치), 지오해시 클러스터링 및 오창읍 바운딩 박스 명세 |
+| **[ochang_data_dictionary.md](ochang_data_dictionary.md)** | 데이터 딕셔너리 | 수집 및 파생변수 26개 필드(보증금, 월세, 관리비, 가성비 지수, 옵션점수 등) 스키마 정의서 |
+| **[ochang_dashboard_guide.md](ochang_dashboard_guide.md)** | 대시보드 가이드 | 화이트 글래스모피즘 Single File HTML, Leaflet.js 인터랙티브 지도 퀵 네비게이션 및 기능 가이드 |
+| **[ochang_eda_summary.md](ochang_eda_summary.md)** | EDA 요약서 | 603건 표본 기술통계, 권역별(양청/구룡/주성) 비교표, Scikit-learn TF-IDF Top 10 요약 |
+| **[../data/zigbang_daily_ochang_monthly_rent_20261029.csv](../data/zigbang_daily_ochang_monthly_rent_20261029.csv)** | 원천 데이터셋 | UTF-8-SIG 인코딩, 결측치 0.0% 무결성 검증 완료 전수 데이터셋 (603행, 26열) |
 
 ---
 
-## 💡 문서 활용 가이드
-- **개발 및 API 스펙 확인 시**: `api_specification.md` 참조
-- **수집 및 정제 기준 확인 시**: `collection_plan.md` 및 `implementation_plan.md` 참조
-- **실거주 상권 분석 및 비즈니스 의사결정 시**: `../reports/EDA_Report.md` 참조
-- **인터랙티브 웹 대시보드 실행 시**: `../dashboard.html` 직접 실행
+## 🏛️ [기존 프로젝트] 세종특별자치시 정부청사 생활권 오피스텔 파이프라인
+- `api_specification.md`, `collection_plan.md`, `implementation_plan.md`, `walkthrough.md`, `subagent_workflow_and_audits.md`

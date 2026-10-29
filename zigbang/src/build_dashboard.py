@@ -1,765 +1,1124 @@
-"""직방 세종특별자치시 오피스텔 앰버 글래스모피즘 인터랙티브 웹 대시보드 컴파일러.
-
-- data/summary_data.json의 전수 데이터셋을 단일 HTML 파일(dashboard.html)에 인라인 번들링
-- CORS 제약 없이 로컬 더블클릭(file://) 및 웹 호스팅에서 100% 즉시 작동
-- 직방 앰버 골드(Amber/Orange) 모던 글래스모피즘 디자인 시스템 탑재
-- 실거주자 특화 '월 총 주거비용(월세+관리비) 계산기', 단지별 가성비 비교 모달, 실시간 검색/정렬/필터링/CSV 내보내기 지원
+# -*- coding: utf-8 -*-
+"""
+오창읍 원룸·빌라 월세 화이트 글래스모피즘 인터랙티브 웹 대시보드 빌더 (지도 고도화 버전)
+- 지도 개선: CartoDB Positron 모던 화이트 타일 + OpenStreetMap 듀얼 레이어
+- 뷰 자동 맞춤: map.fitBounds()로 603개 매물 영역 자동 최적 줌 & 패닝
+- 원클릭 퀵 이동 버튼: 양청리, 구룡리, 주성리, 오창 전역 즉시 이동
+- 팝업 인터랙션 강화: 썸네일 이미지, 가격, 가성비 지표, 모달 연동
+- Chart.js v4 기반 6대 핵심 시각화 차트
+- 실시간 다중 조건 필터, 정렬 테이블, 모달, CSV 내보내기
 """
 
 import json
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+SUMMARY_PATH = DATA_DIR / "summary_data.json"
 
-def build_dashboard():
-    base_dir = Path(__file__).resolve().parent.parent
-    summary_path = base_dir / "data" / "summary_data.json"
-    
-    if not summary_path.exists():
-        raise FileNotFoundError(f"{summary_path} 파일이 없습니다.")
 
-    with open(summary_path, "r", encoding="utf-8") as f:
+def generate_dashboard():
+    print(f"[*] summary_data.json 로드: {SUMMARY_PATH}")
+    with open(SUMMARY_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    json_str = json.dumps(data, ensure_ascii=False)
+    data_json_str = json.dumps(data, ensure_ascii=False)
 
     html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>세종 정부청사 오피스텔 실거주 가성비 대시보드 | 직방 빅데이터</title>
+  <title>오창읍 원룸·빌라 월세 데이터 인텔리전스 대시보드</title>
   
-  <!-- Pretendard 폰트 & Tailwind CSS CDN -->
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js v4 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <script>
-    tailwind.config = {{
-      theme: {{
-        extend: {{
-          fontFamily: {{
-            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-          }},
-          colors: {{
-            brand: {{
-              50: '#fffbeb',
-              100: '#fef3c7',
-              200: '#fde68a',
-              300: '#fcd34d',
-              400: '#fbbf24',
-              500: '#f59e0b',
-              600: '#d97706',
-              700: '#b45309',
-              800: '#92400e',
-              900: '#78350f',
-            }}
-          }}
-        }}
-      }}
-    }}
-  </script>
+  <!-- Leaflet.js CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet MarkerCluster CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+
     body {{
-      background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 50%, #f8fafc 100%);
       min-height: 100vh;
-      color: #1E293B;
-      font-family: 'Pretendard', sans-serif;
+      color: #1e293b;
+      position: relative;
+      overflow-x: hidden;
     }}
+
+    /* 앰비언트 오로라 글로우 애니메이션 배경 */
+    .aurora-bg {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }}
+    .glow-circle-1 {{
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      top: -150px;
+      left: -150px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(219, 234, 254, 0.05) 70%, transparent 100%);
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: float 20s infinite ease-in-out;
+    }}
+    .glow-circle-2 {{
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      bottom: -200px;
+      right: -150px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(224, 242, 254, 0.05) 70%, transparent 100%);
+      border-radius: 50%;
+      filter: blur(90px);
+      animation: float 25s infinite ease-in-out reverse;
+    }}
+    .glow-circle-3 {{
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      top: 40%;
+      left: 45%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(238, 242, 255, 0.05) 70%, transparent 100%);
+      border-radius: 50%;
+      filter: blur(85px);
+      animation: float 22s infinite ease-in-out;
+    }}
+
+    @keyframes float {{
+      0%, 100% {{ transform: translate(0, 0) scale(1); }}
+      50% {{ transform: translate(60px, 40px) scale(1.08); }}
+    }}
+
+    /* 화이트 프로스티드 글래스모피즘 패널 스타일 */
     .glass-card {{
-      background: rgba(255, 255, 255, 0.78);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(251, 191, 36, 0.35);
-      box-shadow: 0 10px 30px -5px rgba(217, 119, 6, 0.08), 0 4px 12px -2px rgba(217, 119, 6, 0.04);
-    }}
-    .glass-card-hover {{
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+      border-radius: 1.25rem;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }}
-    .glass-card-hover:hover {{
-      transform: translateY(-4px);
-      box-shadow: 0 20px 35px -5px rgba(217, 119, 6, 0.15);
-      border-color: rgba(245, 158, 11, 0.6);
+    .glass-card:hover {{
+      box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.08), 0 6px 16px -2px rgba(0, 0, 0, 0.04);
+      border-color: rgba(255, 255, 255, 1);
     }}
-    .glass-input {{
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(251, 191, 36, 0.4);
+
+    /* 지도 컨테이너 */
+    #map {{
+      height: 520px;
+      width: 100%;
+      border-radius: 1rem;
+      z-index: 10;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
     }}
-    .glass-input:focus {{
-      outline: none;
-      border-color: #F59E0B;
-      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+
+    /* Leaflet 팝업 스타일링 */
+    .leaflet-popup-content-wrapper {{
+      border-radius: 1rem !important;
+      background: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(12px) !important;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+      border: 1px solid rgba(255, 255, 255, 0.8) !important;
+      padding: 4px !important;
     }}
+    .leaflet-popup-tip {{
+      background: rgba(255, 255, 255, 0.95) !important;
+    }}
+
+    /* 퀵 네비 버튼 */
+    .quick-btn {{
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      transition: all 0.2s;
+      cursor: pointer;
+    }}
+    .quick-btn:hover {{
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+      transform: translateY(-1px);
+    }}
+
     /* 커스텀 스크롤바 */
     ::-webkit-scrollbar {{
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
     }}
     ::-webkit-scrollbar-track {{
-      background: rgba(254, 243, 199, 0.5);
+      background: rgba(241, 245, 249, 0.6);
     }}
     ::-webkit-scrollbar-thumb {{
-      background: rgba(245, 158, 11, 0.4);
-      border-radius: 4px;
+      background: rgba(148, 163, 184, 0.5);
+      border-radius: 3px;
     }}
     ::-webkit-scrollbar-thumb:hover {{
-      background: rgba(217, 119, 6, 0.7);
+      background: rgba(100, 116, 139, 0.8);
     }}
   </style>
 </head>
 <body class="p-4 md:p-8">
 
-  <!-- 전체 컨테이너 -->
+  <!-- 배경 애니메이션 -->
+  <div class="aurora-bg">
+    <div class="glow-circle-1"></div>
+    <div class="glow-circle-2"></div>
+    <div class="glow-circle-3"></div>
+  </div>
+
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- 상단 헤더 -->
-    <header class="glass-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
-      <div class="absolute -right-12 -top-12 w-48 h-48 bg-amber-400 rounded-full opacity-20 blur-3xl pointer-events-none"></div>
+    <!-- 헤더 섹션 -->
+    <header class="glass-card p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <div class="flex items-center gap-2 mb-2">
-          <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-sm flex items-center gap-1">
-            <i data-lucide="building-2" class="w-3.5 h-3.5"></i> 직방 공식 연동 빅데이터
-          </span>
-          <span class="text-xs text-amber-800 font-medium">정부세종청사 도보 생활권</span>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold mb-2 border border-blue-100">
+          <i class="fa-solid fa-bolt"></i> 실시간 데이터 인텔리전스 | 전수 603건 무결성 검증
         </div>
-        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-          세종청사 오피스텔 <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">실거주 가성비 대시보드</span>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          충북 청주시 청원구 오창읍 원룸·빌라 월세 대시보드
         </h1>
-        <p class="text-slate-600 text-sm mt-1">
-          어진동 · 나성동 · 도담동 28개 단지 실매물 전수 분석 | 20년차 분석가 설계
+        <p class="text-slate-500 text-sm mt-1">
+          오창과학산업단지·2산단 배후 주거지 실시간 시세, 가성비 지표 및 지리 인터랙티브 지도 탐색기
         </p>
       </div>
 
-      <!-- 액션 버튼군 -->
-      <div class="flex items-center gap-2 w-full md:w-auto">
-        <button onclick="openCalcModal()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm shadow-md transition-all flex items-center justify-center gap-2">
-          <i data-lucide="calculator" class="w-4 h-4"></i> 월 주거비 계산기
+      <div class="flex items-center gap-3">
+        <button id="btnExportCsv" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md shadow-blue-500/20 transition flex items-center gap-2">
+          <i class="fa-solid fa-file-csv text-base"></i> 필터 결과 CSV 다운로드
         </button>
-        <button onclick="exportToCSV()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2">
-          <i data-lucide="download" class="w-4 h-4"></i> CSV 다운로드
+        <button id="btnResetFilters" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm border border-slate-200 transition flex items-center gap-2">
+          <i class="fa-solid fa-rotate-left"></i> 필터 초기화
         </button>
       </div>
     </header>
 
-    <!-- KPI 요약 카드 5종 -->
-    <section class="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <div class="glass-card rounded-2xl p-4 glass-card-hover">
-        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
-          <i data-lucide="home" class="w-3.5 h-3.5 text-amber-500"></i> 총 분석 매물
-        </div>
-        <div class="text-2xl font-black text-slate-800" id="kpi-total">-</div>
-        <div class="text-[11px] text-amber-700 mt-1">어진동 58.3% 집중</div>
+    <!-- KPI 요약 카드 그리드 -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">총 수집 매물</span>
+        <span id="kpiTotal" class="text-2xl md:text-3xl font-black text-blue-600 mt-1 block">603건</span>
+        <span class="text-[11px] text-slate-400 mt-1 block">결측률 0.0% 검증</span>
       </div>
-
-      <div class="glass-card rounded-2xl p-4 glass-card-hover">
-        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
-          <i data-lucide="coins" class="w-3.5 h-3.5 text-amber-500"></i> 평균 보증금
-        </div>
-        <div class="text-2xl font-black text-slate-800" id="kpi-deposit">-</div>
-        <div class="text-[11px] text-slate-500 mt-1">월세 보증금 중앙값 500만</div>
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">평균 월세</span>
+        <span id="kpiAvgRent" class="text-2xl md:text-3xl font-black text-slate-800 mt-1 block">40.8만</span>
+        <span id="kpiMedianRent" class="text-[11px] text-slate-500 mt-1 block">중위수 36.0만</span>
       </div>
-
-      <div class="glass-card rounded-2xl p-4 glass-card-hover">
-        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
-          <i data-lucide="credit-card" class="w-3.5 h-3.5 text-amber-500"></i> 평균 월세
-        </div>
-        <div class="text-2xl font-black text-slate-800" id="kpi-rent">-</div>
-        <div class="text-[11px] text-emerald-600 mt-1">55~65만원대 최다 분포</div>
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">평균 실질 총주거비</span>
+        <span id="kpiAvgTotalCost" class="text-2xl md:text-3xl font-black text-rose-600 mt-1 block">51.2만</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">월세 + 관리비 합산</span>
       </div>
-
-      <div class="glass-card rounded-2xl p-4 glass-card-hover border-amber-400 bg-amber-50/50">
-        <div class="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1">
-          <i data-lucide="receipt" class="w-3.5 h-3.5 text-orange-500"></i> 월 총 주거비용 (핵심)
-        </div>
-        <div class="text-2xl font-black text-orange-600" id="kpi-total-cost">-</div>
-        <div class="text-[11px] text-amber-700 mt-1">월세 + 관리비 합산</div>
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">평균 보증금</span>
+        <span id="kpiAvgDep" class="text-2xl md:text-3xl font-black text-indigo-600 mt-1 block">547.8만</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">중위수 300.0만</span>
       </div>
-
-      <div class="glass-card rounded-2xl p-4 glass-card-hover col-span-2 md:col-span-1">
-        <div class="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i> 전용 평당 월세
-        </div>
-        <div class="text-2xl font-black text-slate-800" id="kpi-pyeong-rent">-</div>
-        <div class="text-[11px] text-slate-500 mt-1">평균 전용 7.3평 기준</div>
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">평균 전용면적</span>
+        <span id="kpiAvgSize" class="text-2xl md:text-3xl font-black text-teal-600 mt-1 block">10.7평</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">약 35.2 ㎡</span>
       </div>
-    </section>
-
-    <!-- 인터랙티브 필터 컨트롤러 바 -->
-    <section class="glass-card rounded-2xl p-4 md:p-5 flex flex-wrap gap-4 items-center justify-between">
-      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-        <!-- 검색창 -->
-        <div class="relative flex-1 md:w-64">
-          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-          <input type="text" id="filter-search" oninput="applyFilters()" placeholder="단지명, 매물 제목 검색..." class="glass-input w-full pl-9 pr-3 py-2 rounded-xl text-sm text-slate-800" />
-        </div>
-
-        <!-- 동 필터 -->
-        <select id="filter-dong" onchange="applyFilters()" class="glass-input px-3 py-2 rounded-xl text-sm font-medium text-slate-700">
-          <option value="ALL">전체 행정동</option>
-          <option value="어진동">어진동 (청사 도보권)</option>
-          <option value="나성동">나성동 (상업/문화)</option>
-          <option value="도담동">도담동 (북부/마트)</option>
-        </select>
-
-        <!-- 거래유형 필터 -->
-        <select id="filter-type" onchange="applyFilters()" class="glass-input px-3 py-2 rounded-xl text-sm font-medium text-slate-700">
-          <option value="ALL">전체 거래유형</option>
-          <option value="월세">월세 (88.9%)</option>
-          <option value="전세">전세</option>
-          <option value="매매">매매</option>
-        </select>
-
-        <!-- 최대 총 주거비 슬라이더 필터 -->
-        <div class="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-xl border border-amber-200">
-          <span class="text-xs font-semibold text-slate-600">최대 주거비:</span>
-          <input type="range" id="filter-max-cost" min="40" max="120" value="120" step="5" oninput="updateCostSlider(this.value)" class="w-24 accent-amber-500 cursor-pointer">
-          <span id="slider-cost-val" class="text-xs font-bold text-amber-700">전체</span>
-        </div>
+      <div class="glass-card p-5 text-center">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">평당 실질 주거비</span>
+        <span id="kpiAvgCpp" class="text-2xl md:text-3xl font-black text-amber-600 mt-1 block">5.2만</span>
+        <span class="text-[11px] text-slate-500 mt-1 block">가성비 지수</span>
       </div>
+    </div>
 
-      <div class="text-xs text-slate-500 font-medium">
-        조회 결과: <strong id="filter-count" class="text-amber-600 font-black">-</strong>건
-      </div>
-    </section>
-
-    <!-- 차트 그리드 6종 -->
-    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- 차트 1: 동별 점유율 도넛 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>행정동별 매물 분포</span>
-          <i data-lucide="pie-chart" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60 flex items-center justify-center">
-          <canvas id="chartDong"></canvas>
-        </div>
-      </div>
-
-      <!-- 차트 2: 총 주거비용 구간 분포 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>월 총 주거비용(월세+관리비) 구간</span>
-          <i data-lucide="bar-chart-3" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60">
-          <canvas id="chartCostDist"></canvas>
-        </div>
-      </div>
-
-      <!-- 차트 3: 면적 대비 월세 상관 산점도 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>전용면적(평) vs 월세 상관관계</span>
-          <i data-lucide="scatter-chart" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60">
-          <canvas id="chartAreaRent"></canvas>
-        </div>
-      </div>
-
-      <!-- 차트 4: 단지별 평당 관리비 부담률 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>단지별 전용 평당 관리비</span>
-          <i data-lucide="gauge" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60">
-          <canvas id="chartManage"></canvas>
-        </div>
-      </div>
-
-      <!-- 차트 5: 층수 비율별 임대료 프리미엄 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>층수 그룹별 평당 월세 프리미엄</span>
-          <i data-lucide="trending-up" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60">
-          <canvas id="chartFloor"></canvas>
-        </div>
-      </div>
-
-      <!-- 차트 6: TF-IDF 핵심 키워드 Top 10 -->
-      <div class="glass-card rounded-2xl p-5">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
-          <span>거주민 리뷰 & 설명 키워드</span>
-          <i data-lucide="hash" class="w-4 h-4 text-amber-500"></i>
-        </h3>
-        <div class="h-60">
-          <canvas id="chartKeywords"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- 매물 전수 실시간 탐색 데이터 테이블 -->
-    <section class="glass-card rounded-2xl p-6">
+    <!-- 다중 인터랙티브 필터 컨트롤 패널 -->
+    <div class="glass-card p-6">
       <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-blue-500"></i> 매물 정밀 다중 필터
+        </h2>
+        <span id="filterStatus" class="text-xs font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+          603개 매물 전체 표시 중
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 권역 필터 -->
         <div>
-          <h2 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-            <i data-lucide="table" class="w-5 h-5 text-amber-500"></i> 세종 오피스텔 실매물 전수 목록
-          </h2>
-          <p class="text-xs text-slate-500">컬럼 헤더를 클릭하면 오름차순/내림차순으로 즉시 정렬됩니다.</p>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">세부 권역 (리)</label>
+          <select id="filterDong" class="w-full bg-white/90 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="ALL">전체 권역 (오창읍 전역)</option>
+            <option value="양청리">양청리 (호수공원/중심상업 221건)</option>
+            <option value="구룡리">구룡리 (구시가지 상권/원룸촌 91건)</option>
+            <option value="주성리">주성리 (2산단 신흥 주거 13건)</option>
+            <option value="송대리">송대리 (산단 배후 5건)</option>
+            <option value="오창읍 기타">오창읍 기타 (각리/산단 272건)</option>
+          </select>
         </div>
-        <div class="text-xs text-slate-500">
-          페이지 <span id="page-num" class="font-bold text-amber-700">1</span> / <span id="total-pages">1</span>
+
+        <!-- 구조 필터 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">방 구조 유형</label>
+          <select id="filterStructure" class="w-full bg-white/90 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+            <option value="ALL">전체 구조</option>
+            <option value="원룸">단독 원룸 (434건)</option>
+            <option value="투룸">투룸 (94건)</option>
+            <option value="1.5룸/분리형">1.5룸 / 분리형 (48건)</option>
+            <option value="쓰리룸+">쓰리룸+ (19건)</option>
+            <option value="복층형 원룸">복층형 원룸 (6건)</option>
+          </select>
+        </div>
+
+        <!-- 월세 슬라이더 -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="text-xs font-semibold text-slate-600">최대 월세</label>
+            <span id="valRent" class="text-xs font-bold text-blue-600">전체 (130만원)</span>
+          </div>
+          <input type="range" id="sliderRent" min="10" max="130" value="130" step="5" class="w-full accent-blue-600 cursor-pointer">
+        </div>
+
+        <!-- 보증금 슬라이더 -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="text-xs font-semibold text-slate-600">최대 보증금</label>
+            <span id="valDeposit" class="text-xs font-bold text-indigo-600">전체 (8,000만원)</span>
+          </div>
+          <input type="range" id="sliderDeposit" min="100" max="8000" value="8000" step="100" class="w-full accent-indigo-600 cursor-pointer">
         </div>
       </div>
 
-      <!-- 반응형 테이블 -->
-      <div class="overflow-x-auto rounded-xl border border-amber-200 bg-white/70">
-        <table class="w-full text-left text-sm text-slate-700">
-          <thead class="bg-amber-100/70 text-xs font-bold text-amber-900 border-b border-amber-200">
+      <!-- 보조 토글 & 검색 -->
+      <div class="mt-4 pt-4 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div class="flex items-center gap-6">
+          <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+            <input type="checkbox" id="chkElevator" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+            <span>승강기(엘리베이터) 보유 매물만</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+            <input type="checkbox" id="chkFullOption" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+            <span>풀옵션 완료 매물만</span>
+          </label>
+        </div>
+
+        <div class="relative flex-1 max-w-md">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          <input type="text" id="inputSearch" placeholder="매물 제목, 주소, 옵션 키워드 실시간 검색..." class="w-full bg-white/90 border border-slate-200 rounded-xl pl-8 pr-4 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+        </div>
+      </div>
+    </div>
+
+    <!-- 인터랙티브 지도 섹션 (Leaflet & 고도화) -->
+    <div class="glass-card p-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-map-location-dot text-teal-500"></i> 오창읍 실시간 매물 지리 인터랙티브 맵
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            지도를 확대/이동하거나 마커를 클릭하여 매물 상세 정보를 확인할 수 있습니다.
+          </p>
+        </div>
+
+        <!-- 퀵 네비게이션 버튼 & 범례 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-1.5 mr-2">
+            <button onclick="flyToRegion('ALL')" class="quick-btn"><i class="fa-solid fa-earth-asia text-blue-500"></i> 오창 전역</button>
+            <button onclick="flyToRegion('양청리')" class="quick-btn"><i class="fa-solid fa-building text-teal-500"></i> 양청리</button>
+            <button onclick="flyToRegion('구룡리')" class="quick-btn"><i class="fa-solid fa-house text-amber-500"></i> 구룡리</button>
+            <button onclick="flyToRegion('주성리')" class="quick-btn"><i class="fa-solid fa-industry text-indigo-500"></i> 주성리(2산단)</button>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span> 35만 이하
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 ml-1"></span> 36~50만
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 ml-1"></span> 50만 초과
+          </div>
+        </div>
+      </div>
+
+      <div id="map"></div>
+    </div>
+
+    <!-- 6대 핵심 분석 시각화 차트 그리드 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Chart 1: 월세 가격대별 분포 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-chart-column text-blue-500 mr-1.5"></i> 월세 가격대별 매물 분포</span>
+          <span class="text-xs font-normal text-slate-400">단위: 건</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartRentDist"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: 방 구조 유형 점유율 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-chart-pie text-indigo-500 mr-1.5"></i> 방 구조 유형별 점유 비율</span>
+          <span class="text-xs font-normal text-slate-400">비율 (%)</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartStructure"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: 권역별 평균 월세 및 매물수 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-city text-teal-500 mr-1.5"></i> 권역(리)별 평균 월세 및 매물수</span>
+          <span class="text-xs font-normal text-slate-400">만원 / 건</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartSubdong"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: 전용면적 vs 실질총주거비 상관관계 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-chart-line text-rose-500 mr-1.5"></i> 전용면적(평) 대비 실질 총주거비</span>
+          <span class="text-xs font-normal text-slate-400">평 vs 만원</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartSizeVsCost"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 5: 보증금 구간별 평균 월세 수준 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-vault text-amber-500 mr-1.5"></i> 보증금 구간별 평균 월세 및 건수</span>
+          <span class="text-xs font-normal text-slate-400">재무 구조</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartDepositBin"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 6: 층수 구분별 월세 및 면적 비교 -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between mb-3">
+          <span><i class="fa-solid fa-stairs text-sky-500 mr-1.5"></i> 층수 구분(저/중/고)별 평균 시세</span>
+          <span class="text-xs font-normal text-slate-400">층별 프리미엄</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="chartFloorLevel"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 실시간 데이터 상세 탐색 테이블 -->
+    <div class="glass-card p-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-blue-500"></i> 오창읍 매물 실시간 탐색 데이터베이스
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            컬럼 헤더를 클릭하여 정렬하고, 행을 클릭하면 상세 모달 팝업이 열립니다.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs text-slate-500">
+          <span>표시 개수:</span>
+          <select id="selectPageSize" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700">
+            <option value="10">10개씩</option>
+            <option value="25" selected>25개씩</option>
+            <option value="50">50개씩</option>
+            <option value="100">100개씩</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 테이블 본체 -->
+      <div class="overflow-x-auto rounded-xl border border-slate-100">
+        <table class="w-full text-left text-xs text-slate-600 border-collapse">
+          <thead class="bg-slate-50/80 text-slate-700 uppercase font-bold text-[11px] border-b border-slate-200">
             <tr>
-              <th onclick="sortTable('dong')" class="p-3 cursor-pointer hover:bg-amber-200/50">동 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('danji_name')" class="p-3 cursor-pointer hover:bg-amber-200/50">단지명 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('sales_type')" class="p-3 cursor-pointer hover:bg-amber-200/50">유형 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('deposit_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">보증금(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('rent_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">월세(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('manage_cost_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">관리비(만) <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('total_monthly_cost_manwon')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right text-orange-600 font-black">총 주거비 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('exclusive_area_pyeong')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-right">전용평수 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th onclick="sortTable('floor')" class="p-3 cursor-pointer hover:bg-amber-200/50 text-center">층수 <i data-lucide="arrow-up-down" class="w-3 h-3 inline"></i></th>
-              <th class="p-3">매물 상세 / 제목</th>
-              <th class="p-3 text-center">상세</th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="sortTable('item_id')">ID <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="sortTable('sub_dong')">권역(리) <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition" onclick="sortTable('structure_type')">구조 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition text-right" onclick="sortTable('deposit_manwon')">보증금 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition text-right" onclick="sortTable('rent_manwon')">월세 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition text-right" onclick="sortTable('total_monthly_cost')">실질주거비 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition text-right" onclick="sortTable('size_pyeong')">전용면적 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 cursor-pointer hover:bg-slate-100 transition text-right" onclick="sortTable('cost_per_pyeong')">평당비용 <i class="fa-solid fa-sort ml-1 text-slate-400"></i></th>
+              <th class="p-3 text-center">층수</th>
+              <th class="p-3 text-center">옵션</th>
+              <th class="p-3">매물 제목</th>
             </tr>
           </thead>
-          <tbody id="table-body" class="divide-y divide-amber-100">
+          <tbody id="tableBody" class="divide-y divide-slate-100 bg-white/60">
             <!-- 동적 렌더링 -->
           </tbody>
         </table>
       </div>
 
-      <!-- 페이지네이션 컨트롤러 -->
-      <div class="flex items-center justify-center gap-2 mt-4" id="pagination-controls">
-        <!-- 동적 페이지 버튼 -->
+      <!-- 페이지네이션 컨트롤 -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 text-xs text-slate-500">
+        <div id="pageInfo">1-25 / 총 603건</div>
+        <div class="flex items-center gap-1.5" id="paginationControls">
+          <!-- 동적 버튼 -->
+        </div>
       </div>
-    </section>
+    </div>
 
     <!-- 푸터 -->
-    <footer class="text-center text-xs text-slate-500 py-4">
-      직방(Zigbang) 오피스텔 지도 공식 REST API 연동 분석 파이프라인 | End-to-End Automated by Universal Data Pipeline
+    <footer class="text-center text-xs text-slate-400 py-4">
+      직방(Zigbang) 오창읍 원룸·빌라 월세 데이터 파이프라인 | 20년차 데이터 분석가 에이전트 구축 | 2026-10-29
     </footer>
 
   </div>
 
-  <!-- 상세 정보 모달 -->
-  <div id="itemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass-card bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative">
-      <button onclick="closeModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-700">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-      <div id="modalContent"></div>
-    </div>
-  </div>
+  <!-- 매물 상세 모달 팝업 -->
+  <div id="itemModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-white/80 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start">
+        <div>
+          <span id="modalDongBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">양청리</span>
+          <span id="modalStructBadge" class="ml-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">단독 원룸</span>
+          <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mt-2">매물 제목</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
-  <!-- 주거비 계산기 모달 -->
-  <div id="calcModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass-card bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-      <button onclick="closeCalcModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-700">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-      <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <i data-lucide="calculator" class="w-5 h-5 text-amber-500"></i> 월 실질 주거비용 계산기
-      </h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">월세 (만원)</label>
-          <input type="number" id="calc-rent" value="55" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl font-bold text-slate-800" />
+      <div id="modalThumbContainer" class="w-full h-48 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
+        <img id="modalThumb" src="" alt="매물 사진" class="w-full h-full object-cover">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <span class="text-slate-400 block">보증금 / 월세</span>
+          <span id="modalPrice" class="text-base font-bold text-blue-600 mt-0.5 block">300 / 35 만원</span>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">관리비 (원)</label>
-          <input type="number" id="calc-manage" value="110000" step="5000" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl font-bold text-slate-800" />
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <span class="text-slate-400 block">실질 총 주거비용 (관리비 포함)</span>
+          <span id="modalTotalCost" class="text-base font-bold text-rose-600 mt-0.5 block">45.0 만원</span>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">보증금 대출이자 or 기회비용 (연이율 4.0% 가정, 만원)</label>
-          <input type="number" id="calc-deposit" value="500" oninput="runCalculator()" class="glass-input w-full p-2.5 rounded-xl text-slate-800" />
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <span class="text-slate-400 block">전용면적 / 평수</span>
+          <span id="modalSize" class="text-sm font-semibold text-slate-800 mt-0.5 block">33.0 ㎡ (10.0평)</span>
         </div>
-        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-          <div class="text-xs text-amber-800 font-medium">예상되는 월 실제 총 지출액:</div>
-          <div class="text-3xl font-black text-orange-600 mt-1" id="calc-result">67.7만원</div>
-          <div class="text-[11px] text-slate-500 mt-1">월세 + 관리비 + 보증금 금융기회비용(연 4%)</div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <span class="text-slate-400 block">평당 실질비용 (가성비 지수)</span>
+          <span id="modalCpp" class="text-sm font-semibold text-amber-600 mt-0.5 block">4.5 만원/평</span>
         </div>
+      </div>
+
+      <div class="text-xs space-y-1.5 pt-2 border-t border-slate-100 text-slate-600">
+        <div><strong>소재지:</strong> <span id="modalAddress">충북 청주시 청원구 오창읍 양청리</span></div>
+        <div><strong>층수 정보:</strong> <span id="modalFloor">3층 / 4층 (중층)</span></div>
+        <div><strong>편의시설:</strong> <span id="modalFacilities">승강기 없음, 풀옵션 완료, 주차 가능</span></div>
+        <div><strong>등록일자:</strong> <span id="modalDate">2026-10-25</span></div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="closeModal()" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+          닫기
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- 전수 데이터 인라인 번들링 -->
+  <!-- 대시보드 인터랙티브 자바스크립트 엔진 -->
   <script>
-    const RAW_DATA = {json_str};
-    let currentItems = [...RAW_DATA.items];
-    let sortColumn = 'total_monthly_cost_manwon';
-    let sortAsc = true;
-    let currentPage = 1;
-    const pageSize = 10;
+    // 인라인 전수 데이터 로드
+    const rawData = {data_json_str};
+    const allItems = rawData.items || [];
+    let filteredItems = [...allItems];
 
-    // 차트 인스턴스 저장 객체
+    let currentSortCol = 'rent_manwon';
+    let currentSortAsc = true;
+    let currentPage = 1;
+    let pageSize = 25;
+
+    let map = null;
+    let markersCluster = null;
     let charts = {{}};
 
-    window.addEventListener('DOMContentLoaded', () => {{
-      lucide.createIcons();
-      initKPI();
+    // 초기화
+    document.addEventListener('DOMContentLoaded', () => {{
+      initMap();
       initCharts();
       applyFilters();
+      bindEvents();
+
+      // 지도 타일 리사이즈 보정
+      setTimeout(() => {{
+        if (map) {{
+          map.invalidateSize();
+          fitMapToFilteredMarkers();
+        }}
+      }}, 300);
     }});
 
-    function initKPI() {{
-      const k = RAW_DATA.kpi;
-      document.getElementById('kpi-total').innerText = `${{RAW_DATA.metadata.total_items}}건`;
-      document.getElementById('kpi-deposit').innerText = `${{k.avg_deposit.toLocaleString()}}만`;
-      document.getElementById('kpi-rent').innerText = `${{k.avg_rent}}만`;
-      document.getElementById('kpi-total-cost').innerText = `${{k.avg_total_cost}}만`;
-      document.getElementById('kpi-pyeong-rent').innerText = `${{k.avg_pyeong_rent}}만/평`;
+    // 이벤트 바인딩
+    function bindEvents() {{
+      document.getElementById('filterDong').addEventListener('change', applyFilters);
+      document.getElementById('filterStructure').addEventListener('change', applyFilters);
+      
+      const sliderRent = document.getElementById('sliderRent');
+      sliderRent.addEventListener('input', (e) => {{
+        document.getElementById('valRent').textContent = e.target.value >= 130 ? '전체 (130만원)' : `${{e.target.value}}만원 이하`;
+        applyFilters();
+      }});
+
+      const sliderDep = document.getElementById('sliderDeposit');
+      sliderDep.addEventListener('input', (e) => {{
+        document.getElementById('valDeposit').textContent = e.target.value >= 8000 ? '전체 (8,000만원)' : `${{e.target.value}}만원 이하`;
+        applyFilters();
+      }});
+
+      document.getElementById('chkElevator').addEventListener('change', applyFilters);
+      document.getElementById('chkFullOption').addEventListener('change', applyFilters);
+      document.getElementById('inputSearch').addEventListener('input', applyFilters);
+
+      document.getElementById('selectPageSize').addEventListener('change', (e) => {{
+        pageSize = parseInt(e.target.value);
+        currentPage = 1;
+        renderTable();
+      }});
+
+      document.getElementById('btnResetFilters').addEventListener('click', () => {{
+        document.getElementById('filterDong').value = 'ALL';
+        document.getElementById('filterStructure').value = 'ALL';
+        sliderRent.value = 130;
+        document.getElementById('valRent').textContent = '전체 (130만원)';
+        sliderDep.value = 8000;
+        document.getElementById('valDeposit').textContent = '전체 (8,000만원)';
+        document.getElementById('chkElevator').checked = false;
+        document.getElementById('chkFullOption').checked = false;
+        document.getElementById('inputSearch').value = '';
+        applyFilters();
+        flyToRegion('ALL');
+      }});
+
+      document.getElementById('btnExportCsv').addEventListener('click', exportFilteredCsv);
     }}
 
-    function initCharts() {{
-      // 1. 행정동 도넛
-      const dongCounts = RAW_DATA.dong_stats;
-      const dongLabels = Object.keys(dongCounts);
-      const dongData = dongLabels.map(l => dongCounts[l].count);
-      charts.dong = new Chart(document.getElementById('chartDong'), {{
-        type: 'doughnut',
-        data: {{
-          labels: dongLabels,
-          datasets: [{{
-            data: dongData,
-            backgroundColor: ['#F59E0B', '#10B981', '#3B82F6'],
-            borderWidth: 2,
-            borderColor: '#FFFFFF'
-          }}]
-        }},
-        options: {{
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {{
-            legend: {{ position: 'bottom' }}
-          }}
-        }}
-      }});
-
-      // 2. 총 주거비용 히스토그램 (구간별)
-      const costRanges = {{ '55~65만': 7, '65~75만 (최다)': 18, '75~85만': 5, '85만 초과': 2 }};
-      charts.costDist = new Chart(document.getElementById('chartCostDist'), {{
-        type: 'bar',
-        data: {{
-          labels: Object.keys(costRanges),
-          datasets: [{{
-            label: '매물 수 (건)',
-            data: Object.values(costRanges),
-            backgroundColor: '#F59E0B',
-            borderRadius: 6
-          }}]
-        }},
-        options: {{
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {{ legend: {{ display: false }} }},
-          scales: {{ y: {{ beginAtZero: true }} }}
-        }}
-      }});
-
-      // 3. 면적 대비 월세 산점도
-      const scatterData = RAW_DATA.items
-        .filter(it => it.sales_type === '월세')
-        .map(it => ({{ x: it.exclusive_area_pyeong, y: it.rent_manwon }}));
-      charts.areaRent = new Chart(document.getElementById('chartAreaRent'), {{
-        type: 'scatter',
-        data: {{
-          datasets: [{{
-            label: '월세 매물 (전용평수 vs 월세)',
-            data: scatterData,
-            backgroundColor: '#D97706',
-            pointRadius: 5
-          }}]
-        }},
-        options: {{
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {{
-            x: {{ title: {{ display: true, text: '전용면적 (평)' }} }},
-            y: {{ title: {{ display: true, text: '월세 (만원)' }} }}
-          }}
-        }}
-      }});
-
-      // 4. 단지별 관리비
-      const danjiManage = {{ '더리치호수의아침': 14200, '푸르지오시티 1차': 15450, '푸르지오 2차': 15800, '세종포레뷰': 17200, '나성 신축': 21500 }};
-      charts.manage = new Chart(document.getElementById('chartManage'), {{
-        type: 'bar',
-        data: {{
-          labels: Object.keys(danjiManage),
-          datasets: [{{
-            label: '평당 관리비 (원/평)',
-            data: Object.values(danjiManage),
-            backgroundColor: '#FBBF24',
-            borderRadius: 6
-          }}]
-        }},
-        options: {{
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {{ legend: {{ display: false }} }}
-        }}
-      }});
-
-      // 5. 층수 프리미엄
-      charts.floor = new Chart(document.getElementById('chartFloor'), {{
-        type: 'line',
-        data: {{
-          labels: ['저층 (1~5층)', '중층 (6~12층)', '고층 (13층 이상)'],
-          datasets: [{{
-            label: '평균 평당 월세 (만원/평)',
-            data: [7.45, 8.12, 8.85],
-            borderColor: '#B45309',
-            backgroundColor: '#FDE68A',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 6
-          }}]
-        }},
-        options: {{
-          responsive: true,
-          maintainAspectRatio: false
-        }}
-      }});
-
-      // 6. TF-IDF 키워드
-      const topKws = RAW_DATA.top_keywords.slice(0, 7);
-      charts.keywords = new Chart(document.getElementById('chartKeywords'), {{
-        type: 'bar',
-        data: {{
-          labels: topKws.map(k => k.keyword),
-          datasets: [{{
-            label: 'TF-IDF 중요도',
-            data: topKws.map(k => k.score),
-            backgroundColor: '#F59E0B',
-            borderRadius: 6
-          }}]
-        }},
-        options: {{
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {{ legend: {{ display: false }} }}
-        }}
-      }});
-    }}
-
-    function updateCostSlider(val) {{
-      document.getElementById('slider-cost-val').innerText = val >= 120 ? '전체' : `${{val}}만원 이하`;
-      applyFilters();
-    }}
-
+    // 필터링 적용
     function applyFilters() {{
-      const q = document.getElementById('filter-search').value.toLowerCase().trim();
-      const dong = document.getElementById('filter-dong').value;
-      const type = document.getElementById('filter-type').value;
-      const maxCost = parseInt(document.getElementById('filter-max-cost').value);
+      const dong = document.getElementById('filterDong').value;
+      const struct = document.getElementById('filterStructure').value;
+      const maxRent = parseInt(document.getElementById('sliderRent').value);
+      const maxDep = parseInt(document.getElementById('sliderDeposit').value);
+      const needEle = document.getElementById('chkElevator').checked;
+      const needOpt = document.getElementById('chkFullOption').checked;
+      const query = document.getElementById('inputSearch').value.trim().toLowerCase();
 
-      currentItems = RAW_DATA.items.filter(it => {{
-        if (dong !== 'ALL' && it.dong !== dong) return false;
-        if (type !== 'ALL' && it.sales_type !== type) return false;
-        if (maxCost < 120 && it.total_monthly_cost_manwon > maxCost) return false;
-        if (q) {{
-          const matchTarget = `${{it.danji_name}} ${{it.title}} ${{it.dong}}`.toLowerCase();
-          if (!matchTarget.includes(q)) return false;
+      filteredItems = allItems.filter(it => {{
+        if (dong !== 'ALL' && it.sub_dong !== dong) return false;
+        if (struct !== 'ALL' && it.structure_type !== struct) return false;
+        if (it.rent_manwon > maxRent) return false;
+        if (it.deposit_manwon > maxDep) return false;
+        if (needEle && it.has_elevator !== 1) return false;
+        if (needOpt && it.has_full_option !== 1) return false;
+
+        if (query) {{
+          const searchText = `${{it.title}} ${{it.address_full}} ${{it.sub_dong}} ${{it.structure_type}}`.toLowerCase();
+          if (!searchText.includes(query)) return false;
         }}
+
         return true;
       }});
 
-      document.getElementById('filter-count').innerText = currentItems.length;
+      document.getElementById('filterStatus').textContent = `${{filteredItems.length}}개 매물 표시 중 (전체 ${{allItems.length}}건)`;
+      updateKpis();
+      updateMapMarkers();
+      updateCharts();
       currentPage = 1;
-      sortAndRenderTable();
+      renderTable();
     }}
 
-    function sortTable(col) {{
-      if (sortColumn === col) {{
-        sortAsc = !sortAsc;
-      }} else {{
-        sortColumn = col;
-        sortAsc = true;
+    // KPI 카드 업데이트
+    function updateKpis() {{
+      if (filteredItems.length === 0) {{
+        document.getElementById('kpiTotal').textContent = '0건';
+        document.getElementById('kpiAvgRent').textContent = '0만';
+        document.getElementById('kpiMedianRent').textContent = '중위수 0만';
+        document.getElementById('kpiAvgTotalCost').textContent = '0만';
+        document.getElementById('kpiAvgDep').textContent = '0만';
+        document.getElementById('kpiAvgSize').textContent = '0평';
+        document.getElementById('kpiAvgCpp').textContent = '0만';
+        return;
       }}
-      sortAndRenderTable();
+
+      const total = filteredItems.length;
+      const rents = filteredItems.map(d => d.rent_manwon).sort((a,b) => a-b);
+      const avgRent = (rents.reduce((a,b)=>a+b, 0) / total).toFixed(1);
+      const medianRent = rents[Math.floor(total / 2)];
+      const avgCost = (filteredItems.reduce((a,b)=>a+b.total_monthly_cost, 0) / total).toFixed(1);
+      const avgDep = (filteredItems.reduce((a,b)=>a+b.deposit_manwon, 0) / total).toFixed(1);
+      const avgSize = (filteredItems.reduce((a,b)=>a+b.size_pyeong, 0) / total).toFixed(1);
+      const avgCpp = (filteredItems.reduce((a,b)=>a+b.cost_per_pyeong, 0) / total).toFixed(1);
+
+      document.getElementById('kpiTotal').textContent = `${{total}}건`;
+      document.getElementById('kpiAvgRent').textContent = `${{avgRent}}만`;
+      document.getElementById('kpiMedianRent').textContent = `중위수 ${{medianRent}}만`;
+      document.getElementById('kpiAvgTotalCost').textContent = `${{avgCost}}만`;
+      document.getElementById('kpiAvgDep').textContent = `${{avgDep}}만`;
+      document.getElementById('kpiAvgSize').textContent = `${{avgSize}}평`;
+      document.getElementById('kpiAvgCpp').textContent = `${{avgCpp}}만`;
     }}
 
-    function sortAndRenderTable() {{
-      currentItems.sort((a, b) => {{
-        let vA = a[sortColumn];
-        let vB = b[sortColumn];
-        if (typeof vA === 'string') vA = vA.toLowerCase();
-        if (typeof vB === 'string') vB = vB.toLowerCase();
-        if (vA < vB) return sortAsc ? -1 : 1;
-        if (vA > vB) return sortAsc ? 1 : -1;
-        return 0;
+    // Leaflet 인터랙티브 맵 초기화
+    function initMap() {{
+      // 오창읍 중심 좌표: 36.7125, 127.4280
+      map = L.map('map', {{
+        zoomControl: true,
+        scrollWheelZoom: true
+      }}).setView([36.7125, 127.4280], 14);
+
+      // 모던한 CartoDB Positron 화이트 타일 (글래스모피즘과 완벽 일체)
+      L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap',
+        maxZoom: 19,
+        subdomains: 'abcd'
+      }}).addTo(map);
+
+      markersCluster = L.markerClusterGroup({{
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true
+      }});
+      map.addLayer(markersCluster);
+    }}
+
+    // 지도 영역 자동 맞춤
+    function fitMapToFilteredMarkers() {{
+      if (!map || !markersCluster) return;
+      const layers = markersCluster.getLayers();
+      if (layers.length > 0) {{
+        map.fitBounds(markersCluster.getBounds().pad(0.08), {{ maxZoom: 16 }});
+      }}
+    }}
+
+    // 권역 퀵 이동 함수
+    function flyToRegion(region) {{
+      if (!map) return;
+      if (region === 'ALL') {{
+        document.getElementById('filterDong').value = 'ALL';
+        applyFilters();
+        fitMapToFilteredMarkers();
+      }} else if (region === '양청리') {{
+        document.getElementById('filterDong').value = '양청리';
+        applyFilters();
+        map.flyTo([36.7180, 127.4250], 15, {{ duration: 1.2 }});
+      }} else if (region === '구룡리') {{
+        document.getElementById('filterDong').value = '구룡리';
+        applyFilters();
+        map.flyTo([36.7145, 127.4170], 15, {{ duration: 1.2 }});
+      }} else if (region === '주성리') {{
+        document.getElementById('filterDong').value = '주성리';
+        applyFilters();
+        map.flyTo([36.7380, 127.4520], 15, {{ duration: 1.2 }});
+      }}
+    }}
+
+    // 지도 마커 업데이트
+    function updateMapMarkers() {{
+      if (!markersCluster) return;
+      markersCluster.clearLayers();
+
+      const newMarkers = [];
+      filteredItems.forEach(it => {{
+        if (it.latitude && it.longitude) {{
+          let color = '#3b82f6';
+          if (it.rent_manwon <= 35) color = '#3b82f6';
+          else if (it.rent_manwon <= 50) color = '#f59e0b';
+          else color = '#ef4444';
+
+          const marker = L.circleMarker([it.latitude, it.longitude], {{
+            radius: 6,
+            fillColor: color,
+            color: '#ffffff',
+            weight: 1.5,
+            opacity: 1,
+            fillOpacity: 0.85
+          }});
+
+          const thumbHtml = it.thumbnail_url 
+            ? `<div style="width: 100%; height: 90px; border-radius: 8px; overflow: hidden; margin-bottom: 6px; background: #f1f5f9;"><img src="${{it.thumbnail_url}}" style="width:100%; height:100%; object-fit: cover;" onerror="this.parentElement.style.display='none'"></div>`
+            : '';
+
+          const popupContent = `
+            <div style="font-family: Pretendard, sans-serif; font-size: 12px; line-height: 1.4; min-width: 200px; padding: 4px;">
+              ${{thumbHtml}}
+              <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+                <span style="background: #eff6ff; color: #2563eb; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${{it.sub_dong}}</span>
+                <span style="background: #f1f5f9; color: #475569; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${{it.structure_type}}</span>
+              </div>
+              <strong style="font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px; word-break: break-all;">${{it.title || '매물 상세'}}</strong>
+              <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">${{it.address_full}}</div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                <span style="color: #64748b;">보증금 / 월세:</span>
+                <strong style="color: #2563eb;">${{it.deposit_manwon}} / ${{it.rent_manwon}}만</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                <span style="color: #64748b;">실질 주거비:</span>
+                <strong style="color: #e11d48;">${{it.total_monthly_cost}}만</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span style="color: #64748b;">전용면적:</span>
+                <strong style="color: #0f766e;">${{it.size_pyeong}}평 (${{it.size_m2}}㎡)</strong>
+              </div>
+              <button onclick="openModalById(${{it.item_id}})" style="width: 100%; padding: 6px 10px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; transition: background 0.2s;">상세보기</button>
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+          newMarkers.push(marker);
+        }}
       }});
 
+      markersCluster.addLayers(newMarkers);
+    }}
+
+    // Chart.js 6종 차트 초기화
+    function initCharts() {{
+      const chartOptions = {{
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {{
+          legend: {{ position: 'bottom', labels: {{ boxWidth: 12, font: {{ size: 11, family: 'Pretendard' }} }} }}
+        }}
+      }};
+
+      charts.rentDist = new Chart(document.getElementById('chartRentDist'), {{
+        type: 'bar',
+        data: {{ labels: [], datasets: [{{ label: '매물 건수', data: [], backgroundColor: '#3b82f6', borderRadius: 6 }}] }},
+        options: chartOptions
+      }});
+
+      charts.structure = new Chart(document.getElementById('chartStructure'), {{
+        type: 'doughnut',
+        data: {{ labels: [], datasets: [{{ data: [], backgroundColor: ['#3b82f6', '#6366f1', '#14b8a6', '#f59e0b', '#ec4899', '#64748b'] }}] }},
+        options: {{ ...chartOptions, cutout: '65%' }}
+      }});
+
+      charts.subdong = new Chart(document.getElementById('chartSubdong'), {{
+        type: 'bar',
+        data: {{
+          labels: [],
+          datasets: [
+            {{ type: 'bar', label: '평균 월세(만)', data: [], backgroundColor: '#6366f1', borderRadius: 6, yAxisID: 'y' }},
+            {{ type: 'line', label: '매물 건수(건)', data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.3, yAxisID: 'y1' }}
+          ]
+        }},
+        options: {{
+          ...chartOptions,
+          scales: {{
+            y: {{ type: 'linear', position: 'left', title: {{ display: true, text: '만원' }} }},
+            y1: {{ type: 'linear', position: 'right', grid: {{ drawOnChartArea: false }}, title: {{ display: true, text: '건수' }} }}
+          }}
+        }}
+      }});
+
+      charts.sizeVsCost = new Chart(document.getElementById('chartSizeVsCost'), {{
+        type: 'scatter',
+        data: {{
+          datasets: [{{
+            label: '매물 좌표',
+            data: [],
+            backgroundColor: 'rgba(239, 68, 68, 0.65)',
+            pointRadius: 4
+          }}]
+        }},
+        options: {{
+          ...chartOptions,
+          scales: {{
+            x: {{ title: {{ display: true, text: '전용면적 (평)' }} }},
+            y: {{ title: {{ display: true, text: '실질 총 주거비용 (만원)' }} }}
+          }}
+        }}
+      }});
+
+      charts.depositBin = new Chart(document.getElementById('chartDepositBin'), {{
+        type: 'bar',
+        data: {{ labels: [], datasets: [{{ label: '평균 월세(만)', data: [], backgroundColor: '#10b981', borderRadius: 6 }}] }},
+        options: chartOptions
+      }});
+
+      charts.floorLevel = new Chart(document.getElementById('chartFloorLevel'), {{
+        type: 'bar',
+        data: {{
+          labels: ['저층(1층/반지하)', '중층(2~4층)', '고층(5층+)'],
+          datasets: [
+            {{ label: '평균 월세(만)', data: [], backgroundColor: '#0284c7', borderRadius: 6 }},
+            {{ label: '평균 면적(평)', data: [], backgroundColor: '#2dd4bf', borderRadius: 6 }}
+          ]
+        }},
+        options: chartOptions
+      }});
+    }}
+
+    // 차트 데이터 갱신
+    function updateCharts() {{
+      const rentBins = {{ '25만 이하': 0, '26~35만': 0, '36~45만': 0, '46~55만': 0, '56~70만': 0, '70만 초과': 0 }};
+      filteredItems.forEach(it => {{
+        const r = it.rent_manwon;
+        if (r <= 25) rentBins['25만 이하']++;
+        else if (r <= 35) rentBins['26~35만']++;
+        else if (r <= 45) rentBins['36~45만']++;
+        else if (r <= 55) rentBins['46~55만']++;
+        else if (r <= 70) rentBins['56~70만']++;
+        else rentBins['70만 초과']++;
+      }});
+      charts.rentDist.data.labels = Object.keys(rentBins);
+      charts.rentDist.data.datasets[0].data = Object.values(rentBins);
+      charts.rentDist.update();
+
+      const structCounts = {{}};
+      filteredItems.forEach(it => {{
+        structCounts[it.structure_type] = (structCounts[it.structure_type] || 0) + 1;
+      }});
+      charts.structure.data.labels = Object.keys(structCounts);
+      charts.structure.data.datasets[0].data = Object.values(structCounts);
+      charts.structure.update();
+
+      const dongStats = {{}};
+      filteredItems.forEach(it => {{
+        if (!dongStats[it.sub_dong]) dongStats[it.sub_dong] = {{ sumRent: 0, count: 0 }};
+        dongStats[it.sub_dong].sumRent += it.rent_manwon;
+        dongStats[it.sub_dong].count += 1;
+      }});
+      const dongs = Object.keys(dongStats);
+      charts.subdong.data.labels = dongs;
+      charts.subdong.data.datasets[0].data = dongs.map(d => (dongStats[d].sumRent / dongStats[d].count).toFixed(1));
+      charts.subdong.data.datasets[1].data = dongs.map(d => dongStats[d].count);
+      charts.subdong.update();
+
+      charts.sizeVsCost.data.datasets[0].data = filteredItems.map(it => ({{ x: it.size_pyeong, y: it.total_monthly_cost }}));
+      charts.sizeVsCost.update();
+
+      const depBins = {{ '200만 이하': {{ sum: 0, cnt: 0 }}, '201~300만': {{ sum: 0, cnt: 0 }}, '301~500만': {{ sum: 0, cnt: 0 }}, '501~1000만': {{ sum: 0, cnt: 0 }}, '1000만 초과': {{ sum: 0, cnt: 0 }} }};
+      filteredItems.forEach(it => {{
+        const d = it.deposit_manwon;
+        let b = '1000만 초과';
+        if (d <= 200) b = '200만 이하';
+        else if (d <= 300) b = '201~300만';
+        else if (d <= 500) b = '301~500만';
+        else if (d <= 1000) b = '501~1000만';
+        depBins[b].sum += it.rent_manwon;
+        depBins[b].cnt += 1;
+      }});
+      charts.depositBin.data.labels = Object.keys(depBins);
+      charts.depositBin.data.datasets[0].data = Object.keys(depBins).map(k => depBins[k].cnt > 0 ? (depBins[k].sum / depBins[k].cnt).toFixed(1) : 0);
+      charts.depositBin.update();
+
+      const flStats = {{ '저층': {{ rSum: 0, sSum: 0, cnt: 0 }}, '중층': {{ rSum: 0, sSum: 0, cnt: 0 }}, '고층': {{ rSum: 0, sSum: 0, cnt: 0 }} }};
+      filteredItems.forEach(it => {{
+        const cat = it.floor_category || '중층';
+        if (flStats[cat]) {{
+          flStats[cat].rSum += it.rent_manwon;
+          flStats[cat].sSum += it.size_pyeong;
+          flStats[cat].cnt += 1;
+        }}
+      }});
+      charts.floorLevel.data.datasets[0].data = ['저층', '중층', '고층'].map(c => flStats[c].cnt > 0 ? (flStats[c].rSum / flStats[c].cnt).toFixed(1) : 0);
+      charts.floorLevel.data.datasets[1].data = ['저층', '중층', '고층'].map(c => flStats[c].cnt > 0 ? (flStats[c].sSum / flStats[c].cnt).toFixed(1) : 0);
+      charts.floorLevel.update();
+    }}
+
+    // 테이블 렌더링 & 정렬
+    function sortTable(col) {{
+      if (currentSortCol === col) {{
+        currentSortAsc = !currentSortAsc;
+      }} else {{
+        currentSortCol = col;
+        currentSortAsc = true;
+      }}
       renderTable();
     }}
 
     function renderTable() {{
-      const tbody = document.getElementById('table-body');
+      filteredItems.sort((a, b) => {{
+        let v1 = a[currentSortCol];
+        let v2 = b[currentSortCol];
+        if (typeof v1 === 'string') v1 = v1.localeCompare(v2);
+        return currentSortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+      }});
+
+      const tbody = document.getElementById('tableBody');
       tbody.innerHTML = '';
 
-      const totalPages = Math.ceil(currentItems.length / pageSize) || 1;
-      document.getElementById('page-num').innerText = currentPage;
-      document.getElementById('total-pages').innerText = totalPages;
+      const total = filteredItems.length;
+      const startIdx = (currentPage - 1) * pageSize;
+      const pageItems = filteredItems.slice(startIdx, startIdx + pageSize);
 
-      const start = (currentPage - 1) * pageSize;
-      const pageData = currentItems.slice(start, start + pageSize);
-
-      if (pageData.length === 0) {{
-        tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-400">조건에 부합하는 매물이 없습니다.</td></tr>`;
-        return;
-      }}
-
-      pageData.forEach(it => {{
+      pageItems.forEach(it => {{
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-amber-50/50 transition-colors';
+        tr.className = 'hover:bg-blue-50/50 cursor-pointer transition';
+        tr.onclick = () => openModal(it);
+
         tr.innerHTML = `
-          <td class="p-3 font-semibold text-slate-800">${{it.dong}}</td>
-          <td class="p-3 font-medium text-slate-900">${{it.danji_name}}</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${{it.sales_type === '월세' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}}">${{it.sales_type}}</span></td>
-          <td class="p-3 text-right font-medium">${{it.deposit_manwon.toLocaleString()}}</td>
-          <td class="p-3 text-right font-bold text-slate-900">${{it.rent_manwon}}</td>
-          <td class="p-3 text-right text-slate-600">${{it.manage_cost_manwon}}</td>
-          <td class="p-3 text-right font-black text-orange-600">${{it.total_monthly_cost_manwon}}</td>
-          <td class="p-3 text-right">${{it.exclusive_area_pyeong}}평</td>
-          <td class="p-3 text-center text-xs text-slate-500">${{it.floor}}/${{it.max_floor}}F</td>
-          <td class="p-3 truncate max-w-xs text-xs text-slate-600" title="${{it.title}}">${{it.title}}</td>
+          <td class="p-3 font-mono font-medium text-slate-500">${{it.item_id}}</td>
+          <td class="p-3 font-semibold text-slate-800">${{it.sub_dong}}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">${{it.structure_type}}</span></td>
+          <td class="p-3 text-right font-medium text-slate-700">${{it.deposit_manwon.toLocaleString()}}만</td>
+          <td class="p-3 text-right font-bold text-blue-600">${{it.rent_manwon}}만</td>
+          <td class="p-3 text-right font-bold text-rose-600">${{it.total_monthly_cost}}만</td>
+          <td class="p-3 text-right text-slate-700">${{it.size_pyeong}}평</td>
+          <td class="p-3 text-right font-medium text-amber-600">${{it.cost_per_pyeong}}만</td>
+          <td class="p-3 text-center text-slate-500">${{it.current_floor}}/${{it.max_floor}} (${{it.floor_category}})</td>
           <td class="p-3 text-center">
-            <button onclick="viewDetail(${{it.item_id}})" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold transition-all">상세</button>
+            ${{it.has_elevator ? '<i class="fa-solid fa-elevator text-blue-500 mr-1" title="승강기"></i>' : ''}}
+            ${{it.has_full_option ? '<i class="fa-solid fa-check-circle text-teal-500" title="풀옵션"></i>' : '<span class="text-slate-300">-</span>'}}
           </td>
+          <td class="p-3 text-slate-700 max-w-xs truncate" title="${{it.title}}">${{it.title}}</td>
         `;
         tbody.appendChild(tr);
       }});
 
-      renderPagination(totalPages);
-      lucide.createIcons();
+      const endIdx = Math.min(startIdx + pageSize, total);
+      document.getElementById('pageInfo').textContent = `${{total > 0 ? startIdx + 1 : 0}}-${{endIdx}} / 총 ${{total}}건`;
+
+      renderPagination(total);
     }}
 
-    function renderPagination(totalPages) {{
-      const c = document.getElementById('pagination-controls');
-      c.innerHTML = '';
-      for (let i = 1; i <= totalPages; i++) {{
+    function renderPagination(total) {{
+      const totalPages = Math.ceil(total / pageSize) || 1;
+      const container = document.getElementById('paginationControls');
+      container.innerHTML = '';
+
+      const btnPrev = document.createElement('button');
+      btnPrev.className = `px-2.5 py-1 rounded-lg border text-xs ${{currentPage === 1 ? 'border-slate-100 text-slate-300 cursor-not-allowed' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}}`;
+      btnPrev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+      btnPrev.disabled = currentPage === 1;
+      btnPrev.onclick = () => {{ if(currentPage > 1) {{ currentPage--; renderTable(); }} }};
+      container.appendChild(btnPrev);
+
+      let startP = Math.max(1, currentPage - 2);
+      let endP = Math.min(totalPages, startP + 4);
+      if (endP - startP < 4) startP = Math.max(1, endP - 4);
+
+      for (let p = startP; p <= endP; p++) {{
         const btn = document.createElement('button');
-        btn.innerText = i;
-        btn.className = `w-8 h-8 rounded-lg text-xs font-bold transition-all ${{i === currentPage ? 'bg-amber-500 text-white shadow-sm' : 'bg-white/80 hover:bg-amber-100 text-slate-700'}}`;
-        btn.onclick = () => {{ currentPage = i; renderTable(); }};
-        c.appendChild(btn);
+        btn.className = `px-2.5 py-1 rounded-lg border text-xs ${{p === currentPage ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}}`;
+        btn.textContent = p;
+        btn.onclick = () => {{ currentPage = p; renderTable(); }};
+        container.appendChild(btn);
       }}
+
+      const btnNext = document.createElement('button');
+      btnNext.className = `px-2.5 py-1 rounded-lg border text-xs ${{currentPage === totalPages ? 'border-slate-100 text-slate-300 cursor-not-allowed' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}}`;
+      btnNext.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+      btnNext.disabled = currentPage === totalPages;
+      btnNext.onclick = () => {{ if(currentPage < totalPages) {{ currentPage++; renderTable(); }} }};
+      container.appendChild(btnNext);
     }}
 
-    function viewDetail(itemId) {{
-      const it = RAW_DATA.items.find(x => x.item_id === itemId);
-      if (!it) return;
+    // 모달 팝업
+    function openModalById(id) {{
+      const it = allItems.find(d => d.item_id === id);
+      if (it) openModal(it);
+    }}
 
-      const content = document.getElementById('modalContent');
-      content.innerHTML = `
-        <div class="space-y-4">
-          <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500 text-white">${{it.dong}}</span>
-            <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">${{it.sales_type}}</span>
-          </div>
-          <h2 class="text-xl font-black text-slate-900">${{it.danji_name}}</h2>
-          <p class="text-xs text-slate-500">${{it.full_address}}</p>
+    function openModal(it) {{
+      document.getElementById('modalDongBadge').textContent = it.sub_dong;
+      document.getElementById('modalStructBadge').textContent = it.structure_type;
+      document.getElementById('modalTitle').textContent = it.title;
 
-          <div class="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-amber-50/80 border border-amber-200">
-            <div><span class="text-xs text-slate-500">보증금/월세:</span> <strong class="text-sm text-slate-900">${{it.deposit_manwon.toLocaleString()}}만 / ${{it.rent_manwon}}만</strong></div>
-            <div><span class="text-xs text-slate-500">월 관리비:</span> <strong class="text-sm text-slate-900">${{it.manage_cost_won.toLocaleString()}}원</strong></div>
-            <div><span class="text-xs text-slate-500">월 총 주거비:</span> <strong class="text-sm text-orange-600">${{it.total_monthly_cost_manwon}}만원</strong></div>
-            <div><span class="text-xs text-slate-500">전용면적:</span> <strong class="text-sm text-slate-900">${{it.exclusive_area_pyeong}}평 (${{it.exclusive_area_m2}}㎡)</strong></div>
-            <div><span class="text-xs text-slate-500">층수:</span> <strong class="text-sm text-slate-900">${{it.floor}}층 (총 ${{it.max_floor}}층)</strong></div>
-            <div><span class="text-xs text-slate-500">준공연도/노후:</span> <strong class="text-sm text-slate-900">${{it.built_year}}년 (${{it.building_age}}년 경과)</strong></div>
-          </div>
+      const thumb = document.getElementById('modalThumb');
+      if (it.thumbnail_url) {{
+        thumb.src = it.thumbnail_url;
+        document.getElementById('modalThumbContainer').style.display = 'flex';
+      }} else {{
+        document.getElementById('modalThumbContainer').style.display = 'none';
+      }}
 
-          <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1">매물 설명</h4>
-            <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">${{it.title}}</p>
-          </div>
-
-          <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1">실거주민 생생 리뷰</h4>
-            <p class="text-xs text-amber-900 bg-amber-100/50 p-3 rounded-xl border border-amber-200 leading-relaxed">${{it.review_recent || '등록된 최근 리뷰가 없습니다.'}}</p>
-          </div>
-        </div>
-      `;
+      document.getElementById('modalPrice').textContent = `${{it.deposit_manwon.toLocaleString()}} / ${{it.rent_manwon}} 만원`;
+      document.getElementById('modalTotalCost').textContent = `${{it.total_monthly_cost}} 만원 (관리비 ${{it.manage_cost_manwon}}만)`;
+      document.getElementById('modalSize').textContent = `${{it.size_m2}} ㎡ (${{it.size_pyeong}}평)`;
+      document.getElementById('modalCpp').textContent = `${{it.cost_per_pyeong}} 만원/평`;
+      document.getElementById('modalAddress').textContent = it.address_full || '오창읍 일대';
+      document.getElementById('modalFloor').textContent = `${{it.current_floor}}층 / ${{it.max_floor}}층 (${{it.floor_category}})`;
+      
+      const fac = [];
+      if (it.has_elevator) fac.push('승강기(엘리베이터) 보유');
+      if (it.has_full_option) fac.push('풀옵션 완비');
+      if (it.parking_available) fac.push('주차 가능');
+      document.getElementById('modalFacilities').textContent = fac.length > 0 ? fac.join(', ') : '기본 옵션';
+      document.getElementById('modalDate').textContent = it.reg_date || '-';
 
       document.getElementById('itemModal').classList.remove('hidden');
-      lucide.createIcons();
     }}
 
     function closeModal() {{
       document.getElementById('itemModal').classList.add('hidden');
     }}
 
-    function openCalcModal() {{
-      document.getElementById('calcModal').classList.remove('hidden');
-      runCalculator();
-    }}
+    // 필터링 결과 CSV 내보내기 (UTF-8-SIG)
+    function exportFilteredCsv() {{
+      if (filteredItems.length === 0) {{
+        alert('내보낼 매물 데이터가 없습니다.');
+        return;
+      }}
 
-    function closeCalcModal() {{
-      document.getElementById('calcModal').classList.add('hidden');
-    }}
+      const headers = Object.keys(filteredItems[0]);
+      let csvContent = '\\uFEFF';
+      csvContent += headers.join(',') + '\\n';
 
-    function runCalculator() {{
-      const rent = parseFloat(document.getElementById('calc-rent').value) || 0;
-      const manage = parseFloat(document.getElementById('calc-manage').value) || 0;
-      const deposit = parseFloat(document.getElementById('calc-deposit').value) || 0;
-      const oppCost = (deposit * 0.04) / 12; // 만원 단위
-      const total = rent + (manage / 10000) + oppCost;
-      document.getElementById('calc-result').innerText = `${{total.toFixed(1)}}만원`;
-    }}
-
-    function exportToCSV() {{
-      const headers = ['item_id', 'dong', 'danji_name', 'sales_type', 'deposit_manwon', 'rent_manwon', 'manage_cost_won', 'total_monthly_cost_manwon', 'exclusive_area_pyeong', 'floor', 'max_floor', 'title'];
-      let csvContent = '\\uFEFF' + headers.join(',') + '\\n';
-      currentItems.forEach(it => {{
-        const row = [
-          it.item_id,
-          `"${{it.dong}}"`,
-          `"${{it.danji_name}}"`,
-          `"${{it.sales_type}}"`,
-          it.deposit_manwon,
-          it.rent_manwon,
-          it.manage_cost_won,
-          it.total_monthly_cost_manwon,
-          it.exclusive_area_pyeong,
-          it.floor,
-          it.max_floor,
-          `"${{it.title.replace(/"/g, '""')}}"`
-        ];
-        csvContent += row.join(',') + '\\n';
+      filteredItems.forEach(row => {{
+        const line = headers.map(h => {{
+          let val = row[h];
+          if (val === null || val === undefined) val = '';
+          const str = String(val).replace(/"/g, '""');
+          return `"${{str}}"`;
+        }}).join(',');
+        csvContent += line + '\\n';
       }});
 
       const blob = new Blob([csvContent], {{ type: 'text/csv;charset=utf-8;' }});
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `zigbang_officetel_filtered_${{new Date().toISOString().slice(0,10)}}.csv`);
+      link.setAttribute('download', `zigbang_ochang_filtered_${{new Date().toISOString().slice(0,10)}}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }}
   </script>
+
 </body>
 </html>
 """
 
-    out_html = base_dir / "dashboard.html"
-    with open(out_html, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    out_file1 = BASE_DIR / "dashboard.html"
+    out_file2 = Path(__file__).resolve().parent.parent.parent / "dashboard.html"
 
-    html_size = out_html.stat().st_size
-    print(f"[+] 대시보드 빌드 완료: {out_html}")
-    print(f"    - 파일 크기: {html_size:,} bytes")
-    print(f"    - 내장 매물 수: {len(data['items'])}건")
-    return out_html
+    with open(out_file1, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"[+] 대시보드 생성 완료: {out_file1}")
+
+    with open(out_file2, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"[+] 루트 대시보드 복사 완료: {out_file2}")
 
 
 if __name__ == "__main__":
-    build_dashboard()
+    generate_dashboard()

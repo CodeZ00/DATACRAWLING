@@ -1,363 +1,365 @@
-"""직방 세종특별자치시 정부청사 생활권(어진동·나성동·도담동) 오피스텔 심층 EDA 분석기.
-
-- 20년차 데이터 분석가 가이드라인 완벽 준수
-- 실거주 정주 여건 및 가성비 중심 10대 고해상도(DPI 150) 시각화 차트 생성
-- Scikit-learn TF-IDF 기반 거주민 리뷰 및 매물 특성 키워드 마이닝
-- 대시보드 경량 연동을 위한 summary_data.json 사전 집계
+# -*- coding: utf-8 -*-
+"""
+충북 청주시 청원구 오창읍 원룸·빌라 월세 심층 탐색적 데이터 분석 (EDA) 스크립트
+- 20년차 데이터 분석가 수준의 전문 시각화 11종 생성 (DPI 150)
+- Scikit-learn TF-IDF 기반 상위 30대 핵심 키워드 가중치 추출
+- 대시보드 경량 로딩을 위한 summary_data.json 산출
+- Seaborn 전역 스타일(set_theme, set_style) 설정 금지 원칙 준수
 """
 
 import json
 import os
 import re
-import warnings
 from pathlib import Path
-
-import koreanize_matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
+import koreanize_matplotlib
 
-warnings.filterwarnings("ignore")
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+IMAGES_DIR = BASE_DIR / "images"
+IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-
-def load_data():
-    base_dir = Path(__file__).resolve().parent.parent / "data"
-    csv_files = list(base_dir.glob("zigbang_officetel_sejong_*.csv"))
-    if not csv_files:
-        raise FileNotFoundError("수집된 오피스텔 CSV 파일을 찾을 수 없습니다.")
-    latest_csv = sorted(csv_files)[-1]
-    print(f"[*] 분석 대상 데이터셋 로드: {latest_csv.name}")
-    df = pd.read_csv(latest_csv, encoding="utf-8-sig")
-    return df, latest_csv
+CSV_PATH = DATA_DIR / "zigbang_daily_ochang_monthly_rent_20261029.csv"
 
 
-def print_basic_inspection(df):
-    print("=" * 70)
-    print("1. 기본 데이터 파악 (Basic Data Inspection)")
-    print("=" * 70)
-    print(f"총 데이터 크기: {df.shape[0]}행 x {df.shape[1]}열")
-    print(f"중복 행 수: {df.duplicated().sum()}건")
-    print("\n[상위 3개 행]")
-    print(df[["item_id", "dong", "danji_name", "sales_type", "deposit_manwon", "rent_manwon", "total_monthly_cost_manwon"]].head(3))
-    print("\n[수치형 기술통계 (describe)]")
-    numeric_cols = ["deposit_manwon", "rent_manwon", "manage_cost_won", "total_monthly_cost_manwon", "exclusive_area_pyeong", "building_age", "unit_rent_per_pyeong", "manage_cost_per_pyeong"]
-    print(df[numeric_cols].describe().round(2))
-    print("\n[범주형 기술통계]")
-    print(df[["dong", "sales_type", "danji_name"]].describe())
-    print("=" * 70)
+def run_eda():
+    print(f"[*] CSV 데이터 로드: {CSV_PATH}")
+    df = pd.read_csv(CSV_PATH)
+    print(f"    - 총 데이터 크기: {df.shape[0]}행, {df.shape[1]}열")
+    print(f"    - 결측치 수: {df.isnull().sum().sum()}개")
+    print(f"    - 중복치 수: {df.duplicated(subset=['item_id']).sum()}개")
 
+    # 1. 기술통계 및 기본 지표 산출
+    num_cols = ["deposit_manwon", "rent_manwon", "manage_cost_manwon", "total_monthly_cost", "size_pyeong", "cost_per_pyeong"]
+    desc_num = df[num_cols].describe().round(2)
+    print("\n=== 수치형 변수 기술통계 ===")
+    print(desc_num)
 
-def generate_charts(df, img_dir):
-    os.makedirs(img_dir, exist_ok=True)
-    plt.rcParams["font.family"] = "Pretendard" if "Pretendard" in plt.rcParams["font.sans-serif"] else "Malgun Gothic"
+    # 차트 색상 팔레트 정의
+    c_blue = "#2563eb"
+    c_indigo = "#4f46e5"
+    c_sky = "#0284c7"
+    c_teal = "#0d9488"
+    c_amber = "#d97706"
+    c_rose = "#e11d48"
+    c_slate = "#475569"
 
-    # 1. 01_dong_distribution_pie.png (행정동별 매물 분포 도넛 차트)
-    fig, ax = plt.subplots(figsize=(8, 7), dpi=150)
-    dong_counts = df["dong"].value_counts()
-    colors = ["#F59E0B", "#10B981", "#3B82F6"]
+    # ==========================================
+    # Chart 01: 실질 월세 및 총 주거비용 분포 (히스토그램 & KDE)
+    # ==========================================
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
+    sns.histplot(df["rent_manwon"], kde=True, color=c_blue, bins=25, ax=ax, label="순수 월세 (만원)", alpha=0.5)
+    sns.histplot(df["total_monthly_cost"], kde=True, color=c_rose, bins=25, ax=ax, label="실질 총주거비 (월세+관리비)", alpha=0.4)
+    ax.axvline(df["rent_manwon"].median(), color=c_blue, linestyle="--", linewidth=1.5, label=f"월세 중위수 ({df['rent_manwon'].median():.0f}만원)")
+    ax.axvline(df["total_monthly_cost"].median(), color=c_rose, linestyle="--", linewidth=1.5, label=f"실질비용 중위수 ({df['total_monthly_cost'].median():.1f}만원)")
+    ax.set_title("오창읍 원룸·빌라 월세 및 실질 총 주거비용 분포 (KDE & 히스토그램)", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("비용 (만원/월)", fontsize=11)
+    ax.set_ylabel("매물 빈도수 (건)", fontsize=11)
+    ax.legend(frameon=True, facecolor="#ffffff", edgecolor="#cbd5e1")
+    ax.grid(True, linestyle=":", alpha=0.6)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart01_monthly_rent_dist.png")
+    plt.close()
+    print("[+] Chart 01 저장 완료")
+
+    # ==========================================
+    # Chart 02: 방 구조별 매물 구성비 (도넛 차트)
+    # ==========================================
+    fig, ax = plt.subplots(figsize=(8, 8), dpi=150)
+    struct_counts = df["structure_type"].value_counts()
+    colors = [c_blue, c_indigo, c_teal, c_amber, c_rose, c_slate][:len(struct_counts)]
     wedges, texts, autotexts = ax.pie(
-        dong_counts.values,
-        labels=dong_counts.index,
+        struct_counts,
+        labels=struct_counts.index,
         autopct="%1.1f%%",
         startangle=140,
-        colors=colors[:len(dong_counts)],
-        wedgeprops=dict(width=0.4, edgecolor="white", linewidth=2),
+        colors=colors,
         pctdistance=0.75,
-        textprops=dict(fontsize=12, fontweight="bold")
+        wedgeprops=dict(width=0.4, edgecolor="#ffffff", linewidth=2)
     )
     for at in autotexts:
-        at.set_color("white")
-        at.set_fontsize(13)
-    ax.set_title("세종 정부청사 생활권 행정동별 오피스텔 매물 점유율", fontsize=15, fontweight="bold", pad=20)
+        at.set_fontsize(10)
+        at.set_fontweight("bold")
+    ax.set_title("오창읍 매물 방 구조 유형별 점유 비율", fontsize=14, fontweight="bold", pad=15)
     plt.tight_layout()
-    p1 = img_dir / "01_dong_distribution_pie.png"
-    plt.savefig(p1, bbox_inches="tight")
+    fig.savefig(IMAGES_DIR / "chart02_structure_composition.png")
     plt.close()
-    print(f"[+] 차트 1 생성: {p1.name}")
+    print("[+] Chart 02 저장 완료")
 
-    # 2. 02_sales_type_ratio.png (거래 유형별 비중 및 평균 보증금/월세)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), dpi=150)
-    type_counts = df["sales_type"].value_counts()
-    ax1.bar(type_counts.index, type_counts.values, color=["#F59E0B", "#3B82F6", "#10B981"], edgecolor="#1E293B", linewidth=1.2, width=0.5)
-    for idx, val in enumerate(type_counts.values):
-        ax1.text(idx, val + 0.5, f"{val}건 ({val/len(df)*100:.1f}%)", ha="center", fontsize=11, fontweight="bold")
-    ax1.set_title("거래 유형별 매물 건수 분포", fontsize=13, fontweight="bold")
-    ax1.set_ylabel("매물 수 (건)")
-    ax1.grid(axis="y", linestyle="--", alpha=0.5)
-
-    type_rent = df[df["sales_type"] == "월세"].groupby("dong")["rent_manwon"].mean()
-    ax2.bar(type_rent.index, type_rent.values, color="#F59E0B", edgecolor="#B45309", width=0.4)
-    for idx, val in enumerate(type_rent.values):
-        ax2.text(idx, val + 1, f"평균 {val:.1f}만", ha="center", fontsize=11, fontweight="bold")
-    ax2.set_title("동별 월세 매물 평균 임대료 (만원)", fontsize=13, fontweight="bold")
-    ax2.set_ylabel("월세 (만원)")
-    ax2.grid(axis="y", linestyle="--", alpha=0.5)
-    plt.suptitle("거래 유형 및 동별 임대료 구조 비교", fontsize=15, fontweight="bold", y=1.02)
-    plt.tight_layout()
-    p2 = img_dir / "02_sales_type_ratio.png"
-    plt.savefig(p2, bbox_inches="tight")
-    plt.close()
-    print(f"[+] 차트 2 생성: {p2.name}")
-
-    # 3. 03_monthly_total_cost_distribution.png (월 총 주거비용 히스토그램 & KDE)
+    # ==========================================
+    # Chart 03: 세부 권역(리)별 월세 분포 비교 (박스플롯)
+    # ==========================================
     fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
-    rent_df = df[df["sales_type"] == "월세"]
-    costs = rent_df["total_monthly_cost_manwon"]
-    bins = np.arange(costs.min() - 5, costs.max() + 10, 5)
-    n, b, patches = ax.hist(costs, bins=bins, color="#FBBF24", edgecolor="#D97706", alpha=0.7, density=True)
-    sns.kdeplot(costs, ax=ax, color="#B45309", linewidth=2.5, label="밀도 추정선 (KDE)")
-    mean_cost = costs.mean()
-    median_cost = costs.median()
-    ax.axvline(mean_cost, color="#DC2626", linestyle="--", linewidth=1.8, label=f"평균: {mean_cost:.1f}만원")
-    ax.axvline(median_cost, color="#2563EB", linestyle=":", linewidth=2.0, label=f"중앙값: {median_cost:.1f}만원")
-    ax.set_title("실거주자 월 총 주거비용(월세 + 관리비) 구간 분포", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("월 총 주거비용 (만원)")
-    ax.set_ylabel("밀도 (Density)")
-    ax.legend(fontsize=11)
-    ax.grid(axis="x", linestyle="--", alpha=0.4)
+    dong_order = df["sub_dong"].value_counts().index[:5]
+    sub_df = df[df["sub_dong"].isin(dong_order)]
+    sns.boxplot(x="sub_dong", y="rent_manwon", data=sub_df, order=dong_order, ax=ax, palette="Blues_r", boxprops=dict(alpha=0.8))
+    sns.stripplot(x="sub_dong", y="rent_manwon", data=sub_df, order=dong_order, ax=ax, color="#1e293b", size=4, alpha=0.3, jitter=0.2)
+    ax.set_title("오창읍 주요 권역(리)별 월세 분포 및 이상치 비교", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("오창읍 세부 권역", fontsize=11)
+    ax.set_ylabel("월세 (만원)", fontsize=11)
+    ax.grid(True, axis="y", linestyle=":", alpha=0.6)
     plt.tight_layout()
-    p3 = img_dir / "03_monthly_total_cost_distribution.png"
-    plt.savefig(p3, bbox_inches="tight")
+    fig.savefig(IMAGES_DIR / "chart03_subdong_rent_boxplot.png")
     plt.close()
-    print(f"[+] 차트 3 생성: {p3.name}")
+    print("[+] Chart 03 저장 완료")
 
-    # 4. 04_area_vs_rent_scatter.png (전용면적 대비 월세 상관관계)
+    # ==========================================
+    # Chart 04: 전용면적(평) 대비 실질 총주거비 산점도 & 회귀선
+    # ==========================================
     fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
+    sns.scatterplot(
+        x="size_pyeong",
+        y="total_monthly_cost",
+        hue="structure_type",
+        data=df,
+        ax=ax,
+        palette="tab10",
+        alpha=0.75,
+        s=45
+    )
+    # 추세 회귀선
     sns.regplot(
-        data=rent_df,
-        x="exclusive_area_pyeong",
-        y="rent_manwon",
+        x="size_pyeong",
+        y="total_monthly_cost",
+        data=df,
+        scatter=False,
         ax=ax,
-        scatter_kws={"color": "#F59E0B", "s": 80, "alpha": 0.8, "edgecolors": "white"},
-        line_kws={"color": "#B45309", "linewidth": 2.2, "label": "선형 회귀 추세선"}
+        color="#dc2626",
+        line_kws={"linestyle": "--", "linewidth": 2, "label": "면적-주거비 추세선"}
     )
-    # 어진동 호수의아침, 푸르지오시티 라벨링
-    for _, row in rent_df.iterrows():
-        if row["rent_manwon"] >= 70 or row["exclusive_area_pyeong"] >= 10:
-            ax.annotate(
-                f"{row['danji_name']} ({row['rent_manwon']}만)",
-                xy=(row["exclusive_area_pyeong"], row["rent_manwon"]),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=9,
-                color="#1E293B"
-            )
-    corr = rent_df["exclusive_area_pyeong"].corr(rent_df["rent_manwon"])
-    ax.set_title(f"전용면적(평) vs 월세 상관관계 분석 (상관계수 r = {corr:.2f})", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("전용면적 (평)")
-    ax.set_ylabel("월세 (만원)")
-    ax.legend(fontsize=11)
-    ax.grid(True, linestyle="--", alpha=0.5)
+    ax.set_title("전용면적(평) 대비 실질 총 주거비용 상관관계", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("전용면적 (평)", fontsize=11)
+    ax.set_ylabel("실질 총 주거비용 (만원/월)", fontsize=11)
+    ax.set_xlim(4, 30)
+    ax.set_ylim(10, 150)
+    ax.legend(frameon=True, facecolor="#ffffff", edgecolor="#cbd5e1")
+    ax.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
-    p4 = img_dir / "04_area_vs_rent_scatter.png"
-    plt.savefig(p4, bbox_inches="tight")
+    fig.savefig(IMAGES_DIR / "chart04_rent_vs_size_scatter.png")
     plt.close()
-    print(f"[+] 차트 4 생성: {p4.name}")
+    print("[+] Chart 04 저장 완료")
 
-    # 5. 05_pyeong_rent_by_dong.png (행정동별 전용 평당 월세 가성비 박스플롯)
+    # ==========================================
+    # Chart 05: 보증금 구간별 평균 월세 및 건수 비교
+    # ==========================================
+    df["deposit_bin"] = pd.cut(
+        df["deposit_manwon"],
+        bins=[-1, 200, 300, 500, 1000, 10000],
+        labels=["200만 이하", "201~300만", "301~500만", "501~1,000만", "1,000만 초과"]
+    )
+    dep_summary = df.groupby("deposit_bin", observed=True).agg(
+        avg_rent=("rent_manwon", "mean"),
+        count=("item_id", "count")
+    ).reset_index()
+
+    fig, ax1 = plt.subplots(figsize=(10, 6), dpi=150)
+    ax2 = ax1.twinx()
+    bars = ax1.bar(dep_summary["deposit_bin"], dep_summary["avg_rent"], color=c_indigo, alpha=0.8, width=0.45, label="평균 월세 (만원)")
+    lines = ax2.plot(dep_summary["deposit_bin"], dep_summary["count"], color=c_amber, marker="o", linewidth=2.5, markersize=7, label="매물수 (건)")
+    
+    for b in bars:
+        h = b.get_height()
+        ax1.text(b.get_x() + b.get_width() / 2, h + 1, f"{h:.1f}만", ha="center", va="bottom", fontsize=10, fontweight="bold")
+    
+    for i, txt in enumerate(dep_summary["count"]):
+        ax2.annotate(f"{txt}건", (i, txt + 5), ha="center", fontsize=10, fontweight="bold", color=c_amber)
+
+    ax1.set_title("보증금 구간별 평균 월세 수준 및 매물 분포", fontsize=14, fontweight="bold", pad=15)
+    ax1.set_xlabel("보증금 구간", fontsize=11)
+    ax1.set_ylabel("평균 월세 (만원)", fontsize=11, color=c_indigo)
+    ax2.set_ylabel("매물 건수 (건)", fontsize=11, color=c_amber)
+    ax1.set_ylim(0, dep_summary["avg_rent"].max() * 1.25)
+    ax2.set_ylim(0, dep_summary["count"].max() * 1.3)
+    ax1.grid(True, axis="y", linestyle=":", alpha=0.6)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart05_deposit_rent_tradeoff.png")
+    plt.close()
+    print("[+] Chart 05 저장 완료")
+
+    # ==========================================
+    # Chart 06: 방 구조별 평당 실질 주거비용 (가성비 지수)
+    # ==========================================
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
+    cost_order = df.groupby("structure_type")["cost_per_pyeong"].mean().sort_values(ascending=False).index
+    sns.barplot(x="structure_type", y="cost_per_pyeong", data=df, order=cost_order, ax=ax, palette="mako", ci=None)
+    for p in ax.patches:
+        h = p.get_height()
+        ax.annotate(f"{h:.1f}만원/평", (p.get_x() + p.get_width() / 2., h + 0.1), ha="center", va="bottom", fontsize=10, fontweight="bold")
+    ax.set_title("방 구조 유형별 평당 실질 주거비용 (가성비 지수)", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("방 구조 유형", fontsize=11)
+    ax.set_ylabel("평당 실질비용 (만원/평)", fontsize=11)
+    ax.set_ylim(0, df["cost_per_pyeong"].max() * 0.7)
+    ax.grid(True, axis="y", linestyle=":", alpha=0.6)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart06_cost_per_pyeong_rank.png")
+    plt.close()
+    print("[+] Chart 06 저장 완료")
+
+    # ==========================================
+    # Chart 07: 층수 구분별(저/중/고) 월세 및 면적 비교
+    # ==========================================
     fig, ax = plt.subplots(figsize=(9, 6), dpi=150)
-    sns.boxplot(
-        data=rent_df,
-        x="dong",
-        y="unit_rent_per_pyeong",
-        palette=["#F59E0B", "#10B981", "#3B82F6"],
+    floor_stats = df.groupby("floor_category").agg(
+        avg_rent=("rent_manwon", "mean"),
+        avg_size=("size_pyeong", "mean")
+    ).reindex(["저층", "중층", "고층"])
+    
+    x = np.arange(len(floor_stats))
+    width = 0.35
+    ax.bar(x - width/2, floor_stats["avg_rent"], width, label="평균 월세 (만원)", color=c_blue, alpha=0.85)
+    ax.bar(x + width/2, floor_stats["avg_size"], width, label="평균 면적 (평)", color=c_teal, alpha=0.85)
+    
+    for i in range(len(floor_stats)):
+        ax.text(x[i] - width/2, floor_stats["avg_rent"].iloc[i] + 0.8, f"{floor_stats['avg_rent'].iloc[i]:.1f}만", ha="center", fontsize=10, fontweight="bold")
+        ax.text(x[i] + width/2, floor_stats["avg_size"].iloc[i] + 0.8, f"{floor_stats['avg_size'].iloc[i]:.1f}평", ha="center", fontsize=10, fontweight="bold")
+
+    ax.set_title("층수 카테고리별 평균 월세 및 평균 전용면적 비교", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xticks(x)
+    ax.set_xticklabels(floor_stats.index, fontsize=11)
+    ax.set_ylabel("수치", fontsize=11)
+    ax.set_ylim(0, floor_stats["avg_rent"].max() * 1.25)
+    ax.legend(frameon=True, facecolor="#ffffff", edgecolor="#cbd5e1")
+    ax.grid(True, axis="y", linestyle=":", alpha=0.6)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart07_floor_level_analysis.png")
+    plt.close()
+    print("[+] Chart 07 저장 완료")
+
+    # ==========================================
+    # Chart 08: 엘리베이터 유무 및 풀옵션 여부별 월세 차이
+    # ==========================================
+    fig, ax = plt.subplots(figsize=(9, 6), dpi=150)
+    df["ele_label"] = df["has_elevator"].map({1: "엘리베이터 있음", 0: "엘리베이터 없음"})
+    df["opt_label"] = df["has_full_option"].map({1: "풀옵션 완료", 0: "기본/일반"})
+    opt_summary = df.groupby(["ele_label", "opt_label"])["rent_manwon"].mean().reset_index()
+    sns.barplot(x="ele_label", y="rent_manwon", hue="opt_label", data=opt_summary, ax=ax, palette=["#38bdf8", "#0284c7"])
+    for p in ax.patches:
+        h = p.get_height()
+        if h > 0:
+            ax.annotate(f"{h:.1f}만", (p.get_x() + p.get_width() / 2., h + 0.8), ha="center", va="bottom", fontsize=10, fontweight="bold")
+    ax.set_title("엘리베이터 유무 및 풀옵션 여부에 따른 평균 월세 프리미엄", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("편의시설 (승강기)", fontsize=11)
+    ax.set_ylabel("평균 월세 (만원)", fontsize=11)
+    ax.set_ylim(0, opt_summary["rent_manwon"].max() * 1.25)
+    ax.legend(title="옵션 수준", frameon=True, facecolor="#ffffff", edgecolor="#cbd5e1")
+    ax.grid(True, axis="y", linestyle=":", alpha=0.6)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart08_option_score_effect.png")
+    plt.close()
+    print("[+] Chart 08 저장 완료")
+
+    # ==========================================
+    # Chart 09: 오창읍 매물 지리적 공간 분포 (위경도 산점도)
+    # ==========================================
+    fig, ax = plt.subplots(figsize=(10, 7), dpi=150)
+    sns.scatterplot(
+        x="longitude",
+        y="latitude",
+        hue="sub_dong",
+        size="rent_manwon",
+        sizes=(20, 150),
+        data=df,
         ax=ax,
-        width=0.45,
-        fliersize=5
+        palette="viridis",
+        alpha=0.75
     )
-    sns.stripplot(
-        data=rent_df,
-        x="dong",
-        y="unit_rent_per_pyeong",
-        color="#1E293B",
-        alpha=0.6,
-        size=6,
-        jitter=0.15,
-        ax=ax
-    )
-    ax.set_title("행정동별 전용 평당 월세 단가(가성비) 분포 비교", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("행정동")
-    ax.set_ylabel("전용 평당 월세단가 (만원/평)")
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.set_title("오창읍 원룸·빌라 매물 지리적 공간 분포 및 월세 클러스터", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("경도 (Longitude)", fontsize=11)
+    ax.set_ylabel("위도 (Latitude)", fontsize=11)
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", frameon=True, facecolor="#ffffff", edgecolor="#cbd5e1")
+    ax.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
-    p5 = img_dir / "05_pyeong_rent_by_dong.png"
-    plt.savefig(p5, bbox_inches="tight")
+    fig.savefig(IMAGES_DIR / "chart09_spatial_cluster_kde.png")
     plt.close()
-    print(f"[+] 차트 5 생성: {p5.name}")
+    print("[+] Chart 09 저장 완료")
 
-    # 6. 06_manage_cost_burden_by_danji.png (단지별 평당 관리비 부담률)
-    fig, ax = plt.subplots(figsize=(11, 6), dpi=150)
-    danji_manage = df.groupby("danji_name")["manage_cost_per_pyeong"].mean().sort_values()
-    bars = ax.barh(danji_manage.index, danji_manage.values, color="#F59E0B", edgecolor="#B45309", height=0.55)
-    for b in bars:
-        w = b.get_width()
-        ax.text(w + 300, b.get_y() + b.get_height()/2, f"{int(w):,}원/평", va="center", fontsize=10, fontweight="bold")
-    ax.set_title("주요 단지별 전용 평당 관리비 부담률 비교", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("전용 평당 관리비 (원/평)")
-    ax.set_xlim(0, danji_manage.max() * 1.2)
-    ax.grid(axis="x", linestyle="--", alpha=0.5)
-    plt.tight_layout()
-    p6 = img_dir / "06_manage_cost_burden_by_danji.png"
-    plt.savefig(p6, bbox_inches="tight")
-    plt.close()
-    print(f"[+] 차트 6 생성: {p6.name}")
+    # ==========================================
+    # Chart 10: Scikit-learn TF-IDF 상위 30대 핵심 키워드 가중치
+    # ==========================================
+    # 텍스트 정제
+    titles = df["title"].dropna().tolist()
+    clean_titles = []
+    stop_words = {"오창", "청주", "청원구", "매물", "원룸", "빌라", "투룸", "월세", "전세", "보증금", "추천", "즉시", "입주", "가능", "완료", "최고", "인기", "강추"}
+    for t in titles:
+        # 한글, 영문, 숫자 추출
+        words = re.findall(r"[가-힣a-zA-Z0-9]+", str(t))
+        filtered = [w for w in words if len(w) >= 2 and w not in stop_words]
+        clean_titles.append(" ".join(filtered))
 
-    # 7. 07_floor_premium_analysis.png (층수 비율별 평당 임대료 프리미엄)
-    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
-    rent_df["floor_group"] = pd.cut(
-        rent_df["floor_ratio"],
-        bins=[0, 0.35, 0.7, 1.0],
-        labels=["저층 (하위 35%)", "중층 (35~70%)", "고층 (상위 30%)"]
-    )
-    floor_stats = rent_df.groupby("floor_group")["unit_rent_per_pyeong"].agg(["mean", "count"]).dropna()
-    ax.plot(floor_stats.index, floor_stats["mean"], marker="o", markersize=10, linewidth=2.5, color="#D97706", label="평균 평당 월세")
-    for idx, (grp, row) in enumerate(floor_stats.iterrows()):
-        ax.text(idx, row["mean"] + 0.15, f"{row['mean']:.2f}만/평\n(N={int(row['count'])}건)", ha="center", fontsize=11, fontweight="bold")
-    ax.set_title("층수 비율(저층·중층·고층)에 따른 평당 임대료 프리미엄 추이", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("층수 그룹")
-    ax.set_ylabel("평균 평당 월세 (만원/평)")
-    ax.set_ylim(floor_stats["mean"].min() - 0.5, floor_stats["mean"].max() + 0.8)
-    ax.grid(True, linestyle="--", alpha=0.5)
-    plt.tight_layout()
-    p7 = img_dir / "07_floor_premium_analysis.png"
-    plt.savefig(p7, bbox_inches="tight")
-    plt.close()
-    print(f"[+] 차트 7 생성: {p7.name}")
+    tfidf = TfidfVectorizer(max_features=30)
+    tfidf_matrix = tfidf.fit_transform(clean_titles)
+    tfidf_scores = np.array(tfidf_matrix.sum(axis=0)).flatten()
+    keywords = tfidf.get_feature_names_out()
+    
+    tfidf_df = pd.DataFrame({"keyword": keywords, "score": tfidf_scores}).sort_values("score", ascending=True)
 
-    # 8. 08_building_age_vs_rent_depreciation.png (노후도 감가상각 분석)
-    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
-    age_stats = rent_df.groupby("building_age")["unit_rent_per_pyeong"].mean()
-    ax.plot(age_stats.index, age_stats.values, marker="s", markersize=8, color="#2563EB", linewidth=2.2, label="경과연수별 평당 월세")
-    ax.scatter(rent_df["building_age"], rent_df["unit_rent_per_pyeong"], color="#93C5FD", alpha=0.7, s=50, label="개별 매물 관측치")
-    for x, y in age_stats.items():
-        ax.annotate(f"{y:.2f}만", xy=(x, y), xytext=(0, 8), textcoords="offset points", ha="center", fontsize=9, fontweight="bold")
-    ax.set_title("준공 후 경과연수(노후도)에 따른 임대료 감가상각 추이", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("준공 후 경과연수 (년)")
-    ax.set_ylabel("전용 평당 월세 (만원/평)")
-    ax.legend(fontsize=11)
-    ax.grid(True, linestyle="--", alpha=0.5)
-    plt.tight_layout()
-    p8 = img_dir / "08_building_age_vs_rent_depreciation.png"
-    plt.savefig(p8, bbox_inches="tight")
-    plt.close()
-    print(f"[+] 차트 8 생성: {p8.name}")
-
-    # 9. 09_tfidf_resident_review_keywords.png (TF-IDF 상위 30대 키워드 분석)
-    text_corpus = (df["title"].fillna("") + " " + df["review_recent"].fillna("")).tolist()
-    # 한글 및 영문 2글자 이상 추출 정제
-    cleaned_corpus = [re.sub(r"[^\w\s]", " ", t) for t in text_corpus if len(t.strip()) > 3]
-
-    tfidf = TfidfVectorizer(max_features=30, min_df=1, token_pattern=r"(?u)\b\w{2,}\b")
-    tfidf_matrix = tfidf.fit_transform(cleaned_corpus)
-    scores = np.asarray(tfidf_matrix.mean(axis=0)).ravel()
-    keywords = sorted(zip(tfidf.get_feature_names_out(), scores), key=lambda x: x[1], reverse=True)
-
-    fig, ax = plt.subplots(figsize=(12, 8), dpi=150)
-    kw_names = [k[0] for k in keywords[:25]][::-1]
-    kw_scores = [k[1] for k in keywords[:25]][::-1]
-    bars = ax.barh(kw_names, kw_scores, color="#F59E0B", edgecolor="#B45309", height=0.6)
-    for b in bars:
-        ax.text(b.get_width() + 0.002, b.get_y() + b.get_height()/2, f"{b.get_width():.3f}", va="center", fontsize=9)
-    ax.set_title("세종 오피스텔 거주민 리뷰 & 매물 설명 TF-IDF 상위 25대 핵심 키워드", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("TF-IDF 평균 가중치 (Mean Importance Score)")
-    ax.grid(axis="x", linestyle="--", alpha=0.5)
-    plt.tight_layout()
-    p9 = img_dir / "09_tfidf_resident_review_keywords.png"
-    plt.savefig(p9, bbox_inches="tight")
-    plt.close()
-    print(f"[+] 차트 9 생성: {p9.name}")
-
-    # 10. 10_sejong_officetel_geo_bubble.png (지리적 가성비 버블 차트)
     fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
-    sc = ax.scatter(
-        df["lng"],
-        df["lat"],
-        s=df["exclusive_area_pyeong"] * 25,
-        c=df["total_monthly_cost_manwon"],
-        cmap="YlOrRd",
-        alpha=0.8,
-        edgecolors="#1E293B",
-        linewidth=1.2
-    )
-    cbar = plt.colorbar(sc, ax=ax)
-    cbar.set_label("월 총 주거비용 (만원/월)", fontsize=11, fontweight="bold")
-    
-    # 단지별 대표 라벨
-    for dong_name, grp in df.groupby("dong"):
-        center_x = grp["lng"].mean()
-        center_y = grp["lat"].mean()
-        ax.annotate(
-            f"[{dong_name}]\n평균 {grp['total_monthly_cost_manwon'].mean():.1f}만",
-            xy=(center_x, center_y),
-            fontsize=11,
-            fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8, edgecolor="#D97706"),
-            ha="center"
-        )
-    ax.set_title("정부세종청사 생활권 오피스텔 지리적 공간 분포 및 총 주거비용", fontsize=14, fontweight="bold", pad=15)
-    ax.set_xlabel("경도 (Longitude)")
-    ax.set_ylabel("위도 (Latitude)")
-    ax.grid(True, linestyle="--", alpha=0.4)
+    bars = ax.barh(tfidf_df["keyword"], tfidf_df["score"], color=c_teal, alpha=0.85)
+    ax.set_title("직방 오창읍 매물 제목/설명 Scikit-learn TF-IDF 핵심 키워드 Top 30", fontsize=14, fontweight="bold", pad=15)
+    ax.set_xlabel("TF-IDF 중요도 총합 점수", fontsize=11)
+    ax.grid(True, axis="x", linestyle=":", alpha=0.6)
     plt.tight_layout()
-    p10 = img_dir / "10_sejong_officetel_geo_bubble.png"
-    plt.savefig(p10, bbox_inches="tight")
+    fig.savefig(IMAGES_DIR / "chart10_tfidf_keywords_top30.png")
     plt.close()
-    print(f"[+] 차트 10 생성: {p10.name}")
+    print("[+] Chart 10 저장 완료")
 
-    return keywords
+    # ==========================================
+    # Chart 11: 주요 수치형 변수 간 상관관계 히트맵
+    # ==========================================
+    corr_cols = ["deposit_manwon", "rent_manwon", "manage_cost_manwon", "total_monthly_cost", "size_pyeong", "cost_per_pyeong", "current_floor", "option_score"]
+    corr_labels = ["보증금", "월세", "관리비", "총주거비", "전용면적(평)", "평당비용", "층수", "옵션스코어"]
+    corr_matrix = df[corr_cols].corr()
+    corr_matrix.columns = corr_labels
+    corr_matrix.index = corr_labels
 
+    fig, ax = plt.subplots(figsize=(9, 7), dpi=150)
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True, vmin=-1, vmax=1, ax=ax, linewidths=0.5)
+    ax.set_title("오창읍 원룸·빌라 주요 주거 지표 피어슨 상관계수 매트릭스", fontsize=14, fontweight="bold", pad=15)
+    plt.tight_layout()
+    fig.savefig(IMAGES_DIR / "chart11_correlation_matrix.png")
+    plt.close()
+    print("[+] Chart 11 저장 완료")
 
-def export_summary_json(df, keywords, out_path):
-    """대시보드 실시간 렌더링용 집계 요약 JSON 생성"""
-    rent_df = df[df["sales_type"] == "월세"]
-    
-    summary = {
-        "metadata": {
-            "title": "세종특별자치시 정부청사 생활권(어진동·나성동·도담동) 오피스텔 실매물 분석",
-            "total_items": len(df),
-            "total_rent_items": len(rent_df),
-            "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        },
-        "kpi": {
-            "avg_deposit": round(float(df["deposit_manwon"].mean()), 1),
-            "avg_rent": round(float(rent_df["rent_manwon"].mean()), 1) if len(rent_df) > 0 else 0,
-            "avg_manage_cost": round(float(df["manage_cost_won"].mean()), 0),
-            "avg_total_cost": round(float(rent_df["total_monthly_cost_manwon"].mean()), 1) if len(rent_df) > 0 else 0,
-            "avg_pyeong": round(float(df["exclusive_area_pyeong"].mean()), 1),
-            "avg_pyeong_rent": round(float(rent_df["unit_rent_per_pyeong"].mean()), 2) if len(rent_df) > 0 else 0
-        },
-        "dong_stats": {
-            dong: {
-                "count": int(sub.shape[0]),
-                "avg_rent": round(float(sub[sub["sales_type"] == "월세"]["rent_manwon"].mean()), 1) if len(sub[sub["sales_type"] == "월세"]) > 0 else 0,
-                "avg_total_cost": round(float(sub[sub["sales_type"] == "월세"]["total_monthly_cost_manwon"].mean()), 1) if len(sub[sub["sales_type"] == "월세"]) > 0 else 0,
-                "avg_pyeong": round(float(sub["exclusive_area_pyeong"].mean()), 1),
-                "avg_pyeong_rent": round(float(sub[sub["sales_type"] == "월세"]["unit_rent_per_pyeong"].mean()), 2) if len(sub[sub["sales_type"] == "월세"]) > 0 else 0
-            }
-            for dong, sub in df.groupby("dong")
-        },
-        "sales_type_counts": df["sales_type"].value_counts().to_dict(),
-        "top_keywords": [{"keyword": k[0], "score": round(float(k[1]), 4)} for k in keywords[:20]],
-        "items": df.to_dict(orient="records")
+    # ==========================================
+    # 대시보드 사전 집계 summary_data.json 생성
+    # ==========================================
+    kpi_data = {
+        "total_items": int(df.shape[0]),
+        "avg_rent": float(round(df["rent_manwon"].mean(), 1)),
+        "median_rent": float(round(df["rent_manwon"].median(), 1)),
+        "avg_deposit": float(round(df["deposit_manwon"].mean(), 1)),
+        "avg_total_cost": float(round(df["total_monthly_cost"].mean(), 1)),
+        "avg_size_pyeong": float(round(df["size_pyeong"].mean(), 1)),
+        "avg_cost_per_pyeong": float(round(df["cost_per_pyeong"].mean(), 1)),
+        "full_option_ratio": float(round(df["has_full_option"].mean() * 100, 1)),
+        "elevator_ratio": float(round(df["has_elevator"].mean() * 100, 1)),
     }
 
-    with open(out_path, "w", encoding="utf-8") as f:
+    # 차트용 사전 집계
+    summary = {
+        "kpi": kpi_data,
+        "structure_counts": df["structure_type"].value_counts().to_dict(),
+        "subdong_counts": df["sub_dong"].value_counts().to_dict(),
+        "subdong_avg_rent": df.groupby("sub_dong")["rent_manwon"].mean().round(1).to_dict(),
+        "structure_avg_rent": df.groupby("structure_type")["rent_manwon"].mean().round(1).to_dict(),
+        "structure_avg_size": df.groupby("structure_type")["size_pyeong"].mean().round(1).to_dict(),
+        "deposit_bins": dep_summary.to_dict(orient="records"),
+        "top_keywords": tfidf_df.tail(15).to_dict(orient="records"),
+        "floor_stats": floor_stats.reset_index().to_dict(orient="records"),
+        "items": df.to_dict(orient="records")  # 전수 매물 데이터 포함 (대시보드 실시간 검색/테이블/지도용)
+    }
+
+    summary_path = DATA_DIR / "summary_data.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
-    print(f"[+] 대시보드 요약 JSON 생성 완료: {out_path.name}")
+    print(f"[+] summary_data.json 생성 완료: {summary_path}")
 
-
-def main():
-    df, csv_path = load_data()
-    print_basic_inspection(df)
-
-    img_dir = Path(__file__).resolve().parent.parent / "images"
-    keywords = generate_charts(df, img_dir)
-
-    summary_path = Path(__file__).resolve().parent.parent / "data" / "summary_data.json"
-    export_summary_json(df, keywords, summary_path)
+    return df, desc_num
 
 
 if __name__ == "__main__":
-    main()
+    run_eda()
