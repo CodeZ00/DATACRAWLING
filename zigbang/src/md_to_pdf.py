@@ -1,159 +1,239 @@
-"""직방 세종 오피스텔 종합 분석 보고서 Markdown -> PDF 고품질 변환기.
-
-- markdown 라이브러리 파싱
-- 이미지 Base64 인라인 임베딩 (이미지 누락 원천 차단)
-- 직방 앰버 골드 테마 인쇄용(Print CSS) 디자인 시스템 적용
-- Edge 헤드리스 엔진 기반 완벽한 A4 PDF 출력
+# -*- coding: utf-8 -*-
+"""
+EDA_Report.md -> 고품질 출판물급 PDF 변환기
+- markdown 라이브러리로 HTML 파싱 (테이블, 코드블록 지원)
+- 이미지 상대경로를 file:// 절대경로로 자동 변환
+- 보고서 전용 CSS (Pretendard/Malgun Gothic 폰트, 다크네이비 헤더 테이블, 콜아웃, 차트 캡션)
+- Playwright (msedge headless) 기반 A4 고해상도 PDF 렌더링
+- 출력 파일: zigbang/reports/EDA_Report.pdf
 """
 
-import base64
+import sys
 import os
 import re
-import subprocess
-import sys
+import asyncio
+from pathlib import Path
 import markdown
+from playwright.async_api import async_playwright
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+REPORTS_DIR = BASE_DIR / "reports"
+IMAGES_DIR = BASE_DIR / "images"
+MD_FILE = REPORTS_DIR / "EDA_Report.md"
+PDF_FILE = REPORTS_DIR / "EDA_Report.pdf"
+HTML_TEMP = REPORTS_DIR / "EDA_Report_print.html"
 
 
-def convert_images_to_base64(html_content, base_dir):
-    """HTML 내 로컬 이미지 경로를 Base64 Data URI로 치환"""
-    def replacer(match):
-        img_src = match.group(1)
-        if img_src.startswith("http://") or img_src.startswith("https://") or img_src.startswith("data:"):
-            return match.group(0)
-
-        clean_path = img_src.replace("../", "")
-        img_path = os.path.join(base_dir, clean_path)
-        if not os.path.exists(img_path):
-            img_path = os.path.join("zigbang", clean_path)
-
-        if os.path.exists(img_path):
-            with open(img_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-            ext = os.path.splitext(img_path)[1].lower().replace(".", "")
-            if ext == "jpg":
-                ext = "jpeg"
-            return f'src="data:image/{ext};base64,{encoded}"'
-        return match.group(0)
-
-    pattern = r'src=["\']([^"\']+)["\']'
-    return re.sub(pattern, replacer, html_content)
-
-
-def generate_pdf():
-    md_path = "zigbang/reports/EDA_Report.md"
-    if not os.path.exists(md_path):
-        raise FileNotFoundError(f"{md_path} 파일이 없습니다.")
-
-    with open(md_path, "r", encoding="utf-8") as f:
+def convert_md_to_html():
+    with open(MD_FILE, "r", encoding="utf-8") as f:
         md_text = f.read()
 
-    # Markdown 변환
+    # 이미지 경로를 절대 file:/// 경로로 변환하여 렌더링 보장
+    def replace_img_path(match):
+        alt = match.group(1)
+        rel_path = match.group(2)
+        # ../images/xxx.png -> IMAGES_DIR / xxx.png
+        img_name = Path(rel_path).name
+        full_img_path = (IMAGES_DIR / img_name).resolve()
+        return f'![{alt}](file:///{full_img_path.as_posix()})'
+
+    md_text_fixed = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_img_path, md_text)
+
+    # Markdown -> HTML 변환 (테이블, 펜스코드, 메타데이터 확장)
     html_body = markdown.markdown(
-        md_text,
-        extensions=["tables", "fenced_code", "nl2br", "toc"]
+        md_text_fixed,
+        extensions=["tables", "fenced_code", "nl2br", "sane_lists"]
     )
 
-    base_dir = "zigbang"
-    html_body = convert_images_to_base64(html_body, base_dir)
+    # 전문 보고서 스타일시트
+    css = """
+    @page {
+        size: A4 portrait;
+        margin: 18mm 15mm 20mm 15mm;
+    }
+    
+    * {
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif;
+        font-size: 10pt;
+        line-height: 1.65;
+        color: #1e293b;
+        background-color: #ffffff;
+        margin: 0;
+        padding: 0;
+        word-break: keep-all;
+    }
+    
+    /* 제목 스타일 */
+    h1 {
+        font-size: 19pt;
+        font-weight: 800;
+        color: #0f172a;
+        margin-top: 0;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2.5px solid #2563eb;
+        line-height: 1.3;
+        page-break-after: avoid;
+    }
+    
+    h2 {
+        font-size: 14pt;
+        font-weight: 700;
+        color: #1e3a8a;
+        margin-top: 24px;
+        margin-bottom: 10px;
+        padding-bottom: 4px;
+        border-bottom: 1.5px solid #cbd5e1;
+        page-break-after: avoid;
+    }
+    
+    h3 {
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #334155;
+        margin-top: 16px;
+        margin-bottom: 8px;
+        page-break-after: avoid;
+    }
+    
+    h4 {
+        font-size: 10.5pt;
+        font-weight: 600;
+        color: #475569;
+        margin-top: 12px;
+        margin-bottom: 6px;
+        page-break-after: avoid;
+    }
+    
+    p {
+        margin-top: 0;
+        margin-bottom: 10px;
+        text-align: justify;
+    }
+    
+    /* 인용구 및 콜아웃 블록 */
+    blockquote {
+        margin: 12px 0;
+        padding: 10px 16px;
+        background-color: #f8fafc;
+        border-left: 4px solid #3b82f6;
+        border-radius: 0 8px 8px 0;
+        color: #334155;
+        font-size: 9.5pt;
+        line-height: 1.6;
+        page-break-inside: avoid;
+    }
+    
+    blockquote p {
+        margin: 4px 0;
+    }
+    
+    /* 리스트 스타일 */
+    ul, ol {
+        margin-top: 4px;
+        margin-bottom: 12px;
+        padding-left: 22px;
+    }
+    
+    li {
+        margin-bottom: 4px;
+        line-height: 1.6;
+    }
+    
+    li strong {
+        color: #0f172a;
+    }
+    
+    /* 표 스타일 */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 9pt;
+        line-height: 1.45;
+        page-break-inside: avoid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    th {
+        background-color: #1e293b;
+        color: #ffffff;
+        font-weight: 700;
+        text-align: center;
+        padding: 8px 10px;
+        border: 1px solid #334155;
+        white-space: nowrap;
+    }
+    
+    td {
+        padding: 7px 10px;
+        border: 1px solid #e2e8f0;
+        color: #334155;
+    }
+    
+    tr:nth-child(even) td {
+        background-color: #f8fafc;
+    }
+    
+    /* 수치형 정렬 */
+    td:nth-child(n+3) {
+        text-align: right;
+    }
+    td:nth-child(1), td:nth-child(2) {
+        text-align: left;
+    }
+    
+    /* 이미지 스타일 */
+    img {
+        display: block;
+        max-width: 96%;
+        height: auto;
+        margin: 16px auto 8px auto;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+        page-break-inside: avoid;
+    }
+    
+    /* 구분선 */
+    hr {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 20px 0;
+    }
+    
+    /* 코드 및 강조 */
+    code {
+        font-family: Consolas, 'Courier New', monospace;
+        background-color: #f1f5f9;
+        color: #0f766e;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-size: 8.5pt;
+    }
+    
+    strong {
+        color: #0f172a;
+        font-weight: 700;
+    }
+    
+    em {
+        color: #64748b;
+    }
+    """
 
     full_html = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<title>세종특별자치시 정부청사 생활권 오피스텔 심층 EDA 종합 분석 보고서</title>
-<style>
-    @page {{
-        size: A4;
-        margin: 18mm 15mm 18mm 15mm;
-        @bottom-right {{
-            content: counter(page);
-            font-size: 9pt;
-            color: #64748B;
-        }}
-    }}
-    body {{
-        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
-        color: #1E293B;
-        line-height: 1.65;
-        font-size: 10.5pt;
-        background: #FFFFFF;
-        margin: 0;
-        padding: 0;
-    }}
-    h1 {{
-        color: #D97706;
-        font-size: 20pt;
-        font-weight: 800;
-        border-bottom: 3px solid #F59E0B;
-        padding-bottom: 8px;
-        margin-top: 0;
-        margin-bottom: 16px;
-    }}
-    h2 {{
-        color: #B45309;
-        font-size: 14pt;
-        font-weight: 700;
-        border-bottom: 1.5px solid #FDE68A;
-        padding-bottom: 5px;
-        margin-top: 24px;
-        margin-bottom: 12px;
-        page-break-after: avoid;
-    }}
-    h3 {{
-        color: #92400E;
-        font-size: 12pt;
-        font-weight: 600;
-        margin-top: 18px;
-        margin-bottom: 8px;
-        page-break-after: avoid;
-    }}
-    p {{
-        margin-top: 0;
-        margin-bottom: 10px;
-        text-align: justify;
-    }}
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin: 14px 0;
-        font-size: 9.5pt;
-        page-break-inside: avoid;
-    }}
-    th {{
-        background-color: #FEF3C7;
-        color: #92400E;
-        font-weight: 700;
-        border: 1px solid #FCD34D;
-        padding: 7px 10px;
-        text-align: center;
-    }}
-    td {{
-        border: 1px solid #E2E8F0;
-        padding: 6px 10px;
-        color: #334155;
-    }}
-    tr:nth-child(even) {{
-        background-color: #FFFDF5;
-    }}
-    img {{
-        max-width: 95%;
-        height: auto;
-        display: block;
-        margin: 12px auto;
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-        page-break-inside: avoid;
-    }}
-    blockquote {{
-        border-left: 4px solid #F59E0B;
-        background: #FFFBEB;
-        margin: 14px 0;
-        padding: 10px 14px;
-        color: #78350F;
-        border-radius: 0 6px 6px 0;
-        page-break-inside: avoid;
-    }}
-</style>
+    <meta charset="UTF-8">
+    <title>직방 오창읍 원룸·빌라 월세 심층 EDA 보고서</title>
+    <style>
+{css}
+    </style>
 </head>
 <body>
 {html_body}
@@ -161,37 +241,62 @@ def generate_pdf():
 </html>
 """
 
-    temp_html_path = "zigbang/reports/temp_report.html"
-    with open(temp_html_path, "w", encoding="utf-8") as f:
+    with open(HTML_TEMP, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-    output_pdf_path = os.path.abspath("zigbang/reports/EDA_Report.pdf")
-    input_html_abs = os.path.abspath(temp_html_path)
+    print(f"[+] 인쇄용 HTML 변환 완료: {HTML_TEMP}")
+    return HTML_TEMP
 
-    cmd = [
-        edge_path,
-        "--headless",
-        "--disable-gpu",
-        "--no-pdf-header-footer",
-        f"--print-to-pdf={output_pdf_path}",
-        input_html_abs
-    ]
 
-    print(f"[*] Edge 헤드리스 PDF 변환 실행 중...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+async def render_pdf():
+    html_path = convert_md_to_html()
+    file_url = f"file:///{html_path.resolve().as_posix()}"
+    print(f"[*] Playwright 브라우저로 PDF 렌더링 시작: {file_url}")
 
-    if os.path.exists(temp_html_path):
-        os.remove(temp_html_path)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(channel="msedge", headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
 
-    if os.path.exists(output_pdf_path) and os.path.getsize(output_pdf_path) > 0:
-        pdf_size = os.path.getsize(output_pdf_path)
-        print(f"[+] PDF 생성 성공: {output_pdf_path} (크기: {pdf_size:,} bytes)")
-        return output_pdf_path
-    else:
-        print(f"[!] PDF 변환 스킵 또는 실패: {result.stderr}")
-        return None
+        await page.goto(file_url, wait_until="networkidle")
+        await page.wait_for_timeout(1500)  # 이미지 로드 대기
+
+        # PDF 생성 옵션
+        header_template = """
+        <div style="font-family: 'Malgun Gothic', sans-serif; font-size: 8pt; color: #94a3b8; width: 100%; text-align: right; padding-right: 15mm;">
+            직방 충북 청주시 오창읍 원룸·빌라 월세 시장 데이터 인텔리전스 리포트
+        </div>
+        """
+
+        footer_template = """
+        <div style="font-family: 'Malgun Gothic', sans-serif; font-size: 8pt; color: #94a3b8; width: 100%; display: flex; justify-content: space-between; padding-left: 15mm; padding-right: 15mm;">
+            <span>CONFIDENTIAL & PROPRIETARY — 2026 ZIGBANG RESEARCH</span>
+            <span><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+        </div>
+        """
+
+        await page.pdf(
+            path=str(PDF_FILE),
+            format="A4",
+            print_background=True,
+            display_header_footer=True,
+            header_template=header_template,
+            footer_template=footer_template,
+            margin={
+                "top": "20mm",
+                "bottom": "20mm",
+                "left": "15mm",
+                "right": "15mm"
+            }
+        )
+
+        await browser.close()
+
+    print(f"[+] PDF 생성 성공! 파일 경로: {PDF_FILE}")
+    if PDF_FILE.exists():
+        size_kb = round(PDF_FILE.stat().st_size / 1024, 1)
+        print(f"[+] PDF 파일 크기: {size_kb} KB")
 
 
 if __name__ == "__main__":
-    generate_pdf()
+    asyncio.run(render_pdf())

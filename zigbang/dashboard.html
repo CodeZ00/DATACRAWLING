@@ -9,13 +9,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js v4 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Leaflet.js CDN -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Leaflet MarkerCluster CDN -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
@@ -300,38 +293,6 @@
       </div>
     </div>
 
-    <!-- 인터랙티브 지도 섹션 (Leaflet & 고도화) -->
-    <div class="glass-card p-6">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-        <div>
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <i class="fa-solid fa-map-location-dot text-teal-500"></i> 오창읍 실시간 매물 지리 인터랙티브 맵
-          </h2>
-          <p class="text-xs text-slate-500 mt-0.5">
-            지도를 확대/이동하거나 마커를 클릭하여 매물 상세 정보를 확인할 수 있습니다.
-          </p>
-        </div>
-
-        <!-- 퀵 네비게이션 버튼 & 범례 -->
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex items-center gap-1.5 mr-2">
-            <button onclick="flyToRegion('ALL')" class="quick-btn"><i class="fa-solid fa-earth-asia text-blue-500"></i> 오창 전역</button>
-            <button onclick="flyToRegion('양청리')" class="quick-btn"><i class="fa-solid fa-building text-teal-500"></i> 양청리</button>
-            <button onclick="flyToRegion('구룡리')" class="quick-btn"><i class="fa-solid fa-house text-amber-500"></i> 구룡리</button>
-            <button onclick="flyToRegion('주성리')" class="quick-btn"><i class="fa-solid fa-industry text-indigo-500"></i> 주성리(2산단)</button>
-          </div>
-
-          <div class="flex items-center gap-2 text-xs font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span> 35만 이하
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 ml-1"></span> 36~50만
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 ml-1"></span> 50만 초과
-          </div>
-        </div>
-      </div>
-
-      <div id="map"></div>
-    </div>
-
     <!-- 6대 핵심 분석 시각화 차트 그리드 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -529,25 +490,13 @@
     let currentSortAsc = true;
     let currentPage = 1;
     let pageSize = 25;
-
-    let map = null;
-    let markersCluster = null;
     let charts = {};
 
     // 초기화
     document.addEventListener('DOMContentLoaded', () => {
-      initMap();
       initCharts();
       applyFilters();
       bindEvents();
-
-      // 지도 타일 리사이즈 보정
-      setTimeout(() => {
-        if (map) {
-          map.invalidateSize();
-          fitMapToFilteredMarkers();
-        }
-      }, 300);
     });
 
     // 이벤트 바인딩
@@ -588,7 +537,6 @@
         document.getElementById('chkFullOption').checked = false;
         document.getElementById('inputSearch').value = '';
         applyFilters();
-        flyToRegion('ALL');
       });
 
       document.getElementById('btnExportCsv').addEventListener('click', exportFilteredCsv);
@@ -622,7 +570,6 @@
 
       document.getElementById('filterStatus').textContent = `${filteredItems.length}개 매물 표시 중 (전체 ${allItems.length}건)`;
       updateKpis();
-      updateMapMarkers();
       updateCharts();
       currentPage = 1;
       renderTable();
@@ -659,120 +606,7 @@
       document.getElementById('kpiAvgCpp').textContent = `${avgCpp}만`;
     }
 
-    // Leaflet 인터랙티브 맵 초기화
-    function initMap() {
-      // 오창읍 중심 좌표: 36.7125, 127.4280
-      map = L.map('map', {
-        zoomControl: true,
-        scrollWheelZoom: true
-      }).setView([36.7125, 127.4280], 14);
-
-      // 모던한 CartoDB Positron 화이트 타일 (글래스모피즘과 완벽 일체)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap',
-        maxZoom: 19,
-        subdomains: 'abcd'
-      }).addTo(map);
-
-      markersCluster = L.markerClusterGroup({
-        maxClusterRadius: 40,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true
-      });
-      map.addLayer(markersCluster);
-    }
-
-    // 지도 영역 자동 맞춤
-    function fitMapToFilteredMarkers() {
-      if (!map || !markersCluster) return;
-      const layers = markersCluster.getLayers();
-      if (layers.length > 0) {
-        map.fitBounds(markersCluster.getBounds().pad(0.08), { maxZoom: 16 });
-      }
-    }
-
-    // 권역 퀵 이동 함수
-    function flyToRegion(region) {
-      if (!map) return;
-      if (region === 'ALL') {
-        document.getElementById('filterDong').value = 'ALL';
-        applyFilters();
-        fitMapToFilteredMarkers();
-      } else if (region === '양청리') {
-        document.getElementById('filterDong').value = '양청리';
-        applyFilters();
-        map.flyTo([36.7180, 127.4250], 15, { duration: 1.2 });
-      } else if (region === '구룡리') {
-        document.getElementById('filterDong').value = '구룡리';
-        applyFilters();
-        map.flyTo([36.7145, 127.4170], 15, { duration: 1.2 });
-      } else if (region === '주성리') {
-        document.getElementById('filterDong').value = '주성리';
-        applyFilters();
-        map.flyTo([36.7380, 127.4520], 15, { duration: 1.2 });
-      }
-    }
-
-    // 지도 마커 업데이트
-    function updateMapMarkers() {
-      if (!markersCluster) return;
-      markersCluster.clearLayers();
-
-      const newMarkers = [];
-      filteredItems.forEach(it => {
-        if (it.latitude && it.longitude) {
-          let color = '#3b82f6';
-          if (it.rent_manwon <= 35) color = '#3b82f6';
-          else if (it.rent_manwon <= 50) color = '#f59e0b';
-          else color = '#ef4444';
-
-          const marker = L.circleMarker([it.latitude, it.longitude], {
-            radius: 6,
-            fillColor: color,
-            color: '#ffffff',
-            weight: 1.5,
-            opacity: 1,
-            fillOpacity: 0.85
-          });
-
-          const thumbHtml = it.thumbnail_url 
-            ? `<div style="width: 100%; height: 90px; border-radius: 8px; overflow: hidden; margin-bottom: 6px; background: #f1f5f9;"><img src="${it.thumbnail_url}" style="width:100%; height:100%; object-fit: cover;" onerror="this.parentElement.style.display='none'"></div>`
-            : '';
-
-          const popupContent = `
-            <div style="font-family: Pretendard, sans-serif; font-size: 12px; line-height: 1.4; min-width: 200px; padding: 4px;">
-              ${thumbHtml}
-              <div style="display: flex; gap: 4px; margin-bottom: 4px;">
-                <span style="background: #eff6ff; color: #2563eb; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${it.sub_dong}</span>
-                <span style="background: #f1f5f9; color: #475569; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${it.structure_type}</span>
-              </div>
-              <strong style="font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px; word-break: break-all;">${it.title || '매물 상세'}</strong>
-              <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">${it.address_full}</div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                <span style="color: #64748b;">보증금 / 월세:</span>
-                <strong style="color: #2563eb;">${it.deposit_manwon} / ${it.rent_manwon}만</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                <span style="color: #64748b;">실질 주거비:</span>
-                <strong style="color: #e11d48;">${it.total_monthly_cost}만</strong>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                <span style="color: #64748b;">전용면적:</span>
-                <strong style="color: #0f766e;">${it.size_pyeong}평 (${it.size_m2}㎡)</strong>
-              </div>
-              <button onclick="openModalById(${it.item_id})" style="width: 100%; padding: 6px 10px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; transition: background 0.2s;">상세보기</button>
-            </div>
-          `;
-          marker.bindPopup(popupContent);
-          newMarkers.push(marker);
-        }
-      });
-
-      markersCluster.addLayers(newMarkers);
-    }
-
-    // Chart.js 6종 차트 초기화
+    // Chart.js 6종 차트 초기화    // Chart.js 6종 차트 초기화
     function initCharts() {
       const chartOptions = {
         responsive: true,
